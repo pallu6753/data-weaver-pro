@@ -9,38 +9,241 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SourcesRouteImport } from './routes/sources'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as MonitoringRouteImport } from './routes/monitoring'
+import { Route as LogsRouteImport } from './routes/logs'
+import { Route as LineageRouteImport } from './routes/lineage'
+import { Route as CopilotRouteImport } from './routes/copilot'
+import { Route as CatalogRouteImport } from './routes/catalog'
+import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PipelinesIndexRouteImport } from './routes/pipelines.index'
+import { Route as PipelinesNewRouteImport } from './routes/pipelines.new'
+import { Route as PipelinesIdRouteImport } from './routes/pipelines.$id'
 
+const SourcesRoute = SourcesRouteImport.update({
+  id: '/sources',
+  path: '/sources',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MonitoringRoute = MonitoringRouteImport.update({
+  id: '/monitoring',
+  path: '/monitoring',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LogsRoute = LogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LineageRoute = LineageRouteImport.update({
+  id: '/lineage',
+  path: '/lineage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CopilotRoute = CopilotRouteImport.update({
+  id: '/copilot',
+  path: '/copilot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CatalogRoute = CatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlertsRoute = AlertsRouteImport.update({
+  id: '/alerts',
+  path: '/alerts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PipelinesIndexRoute = PipelinesIndexRouteImport.update({
+  id: '/pipelines/',
+  path: '/pipelines/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PipelinesNewRoute = PipelinesNewRouteImport.update({
+  id: '/pipelines/new',
+  path: '/pipelines/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PipelinesIdRoute = PipelinesIdRouteImport.update({
+  id: '/pipelines/$id',
+  path: '/pipelines/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/alerts': typeof AlertsRoute
+  '/catalog': typeof CatalogRoute
+  '/copilot': typeof CopilotRoute
+  '/lineage': typeof LineageRoute
+  '/logs': typeof LogsRoute
+  '/monitoring': typeof MonitoringRoute
+  '/settings': typeof SettingsRoute
+  '/sources': typeof SourcesRoute
+  '/pipelines/$id': typeof PipelinesIdRoute
+  '/pipelines/new': typeof PipelinesNewRoute
+  '/pipelines/': typeof PipelinesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/alerts': typeof AlertsRoute
+  '/catalog': typeof CatalogRoute
+  '/copilot': typeof CopilotRoute
+  '/lineage': typeof LineageRoute
+  '/logs': typeof LogsRoute
+  '/monitoring': typeof MonitoringRoute
+  '/settings': typeof SettingsRoute
+  '/sources': typeof SourcesRoute
+  '/pipelines/$id': typeof PipelinesIdRoute
+  '/pipelines/new': typeof PipelinesNewRoute
+  '/pipelines': typeof PipelinesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/alerts': typeof AlertsRoute
+  '/catalog': typeof CatalogRoute
+  '/copilot': typeof CopilotRoute
+  '/lineage': typeof LineageRoute
+  '/logs': typeof LogsRoute
+  '/monitoring': typeof MonitoringRoute
+  '/settings': typeof SettingsRoute
+  '/sources': typeof SourcesRoute
+  '/pipelines/$id': typeof PipelinesIdRoute
+  '/pipelines/new': typeof PipelinesNewRoute
+  '/pipelines/': typeof PipelinesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/alerts'
+    | '/catalog'
+    | '/copilot'
+    | '/lineage'
+    | '/logs'
+    | '/monitoring'
+    | '/settings'
+    | '/sources'
+    | '/pipelines/$id'
+    | '/pipelines/new'
+    | '/pipelines/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/alerts'
+    | '/catalog'
+    | '/copilot'
+    | '/lineage'
+    | '/logs'
+    | '/monitoring'
+    | '/settings'
+    | '/sources'
+    | '/pipelines/$id'
+    | '/pipelines/new'
+    | '/pipelines'
+  id:
+    | '__root__'
+    | '/'
+    | '/alerts'
+    | '/catalog'
+    | '/copilot'
+    | '/lineage'
+    | '/logs'
+    | '/monitoring'
+    | '/settings'
+    | '/sources'
+    | '/pipelines/$id'
+    | '/pipelines/new'
+    | '/pipelines/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AlertsRoute: typeof AlertsRoute
+  CatalogRoute: typeof CatalogRoute
+  CopilotRoute: typeof CopilotRoute
+  LineageRoute: typeof LineageRoute
+  LogsRoute: typeof LogsRoute
+  MonitoringRoute: typeof MonitoringRoute
+  SettingsRoute: typeof SettingsRoute
+  SourcesRoute: typeof SourcesRoute
+  PipelinesIdRoute: typeof PipelinesIdRoute
+  PipelinesNewRoute: typeof PipelinesNewRoute
+  PipelinesIndexRoute: typeof PipelinesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sources': {
+      id: '/sources'
+      path: '/sources'
+      fullPath: '/sources'
+      preLoaderRoute: typeof SourcesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/monitoring': {
+      id: '/monitoring'
+      path: '/monitoring'
+      fullPath: '/monitoring'
+      preLoaderRoute: typeof MonitoringRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/logs': {
+      id: '/logs'
+      path: '/logs'
+      fullPath: '/logs'
+      preLoaderRoute: typeof LogsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lineage': {
+      id: '/lineage'
+      path: '/lineage'
+      fullPath: '/lineage'
+      preLoaderRoute: typeof LineageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/copilot': {
+      id: '/copilot'
+      path: '/copilot'
+      fullPath: '/copilot'
+      preLoaderRoute: typeof CopilotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/catalog': {
+      id: '/catalog'
+      path: '/catalog'
+      fullPath: '/catalog'
+      preLoaderRoute: typeof CatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alerts': {
+      id: '/alerts'
+      path: '/alerts'
+      fullPath: '/alerts'
+      preLoaderRoute: typeof AlertsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +251,44 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pipelines/': {
+      id: '/pipelines/'
+      path: '/pipelines'
+      fullPath: '/pipelines/'
+      preLoaderRoute: typeof PipelinesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pipelines/new': {
+      id: '/pipelines/new'
+      path: '/pipelines/new'
+      fullPath: '/pipelines/new'
+      preLoaderRoute: typeof PipelinesNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pipelines/$id': {
+      id: '/pipelines/$id'
+      path: '/pipelines/$id'
+      fullPath: '/pipelines/$id'
+      preLoaderRoute: typeof PipelinesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AlertsRoute: AlertsRoute,
+  CatalogRoute: CatalogRoute,
+  CopilotRoute: CopilotRoute,
+  LineageRoute: LineageRoute,
+  LogsRoute: LogsRoute,
+  MonitoringRoute: MonitoringRoute,
+  SettingsRoute: SettingsRoute,
+  SourcesRoute: SourcesRoute,
+  PipelinesIdRoute: PipelinesIdRoute,
+  PipelinesNewRoute: PipelinesNewRoute,
+  PipelinesIndexRoute: PipelinesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
