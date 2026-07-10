@@ -196,7 +196,7 @@ function DashboardPage() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-mono text-sm font-medium">{p.name}</div>
                   <div className="mt-0.5 text-xs text-muted-foreground">
-                    {p.mode} • {p.owner} • last run {formatDistanceToNow(new Date(p.lastRunAt), { addSuffix: true })}
+                    {p.mode} • {p.owner} • last run {hydrated ? formatDistanceToNow(new Date(p.lastRunAt), { addSuffix: true }) : "—"}
                   </div>
                 </div>
                 <div className="hidden text-right text-xs md:block">
