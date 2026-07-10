@@ -247,7 +247,7 @@ function DashboardPage() {
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-mono text-xs">{p.name}</div>
                     <div className="text-[11px] text-muted-foreground">
-                      {formatDistanceToNow(new Date(r.startedAt), { addSuffix: true })} • {r.durationSec}s • {r.rows.toLocaleString()} rows
+                      {hydrated ? formatDistanceToNow(new Date(r.startedAt), { addSuffix: true }) : "just now"} • {r.durationSec}s • {r.rows.toLocaleString()} rows
                     </div>
                   </div>
                 </div>
