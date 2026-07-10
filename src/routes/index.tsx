@@ -14,6 +14,7 @@ import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePlatform } from "@/lib/mock/store";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { seedCost7d, seedThroughput } from "@/lib/mock/seed";
 
 export const Route = createFileRoute("/")({
