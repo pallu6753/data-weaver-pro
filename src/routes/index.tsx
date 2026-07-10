@@ -14,6 +14,7 @@ import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePlatform } from "@/lib/mock/store";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { seedCost7d, seedThroughput } from "@/lib/mock/seed";
 
 export const Route = createFileRoute("/")({
@@ -66,6 +67,7 @@ function DashboardPage() {
   const runs = usePlatform((s) => s.runs);
   const sources = usePlatform((s) => s.sources);
   const alerts = usePlatform((s) => s.alerts);
+  const hydrated = useHydrated();
 
   const running = pipelines.filter((p) => p.status === "running").length;
   const failed = pipelines.filter((p) => p.status === "failed" || p.status === "degraded").length;
@@ -194,7 +196,7 @@ function DashboardPage() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-mono text-sm font-medium">{p.name}</div>
                   <div className="mt-0.5 text-xs text-muted-foreground">
-                    {p.mode} • {p.owner} • last run {formatDistanceToNow(new Date(p.lastRunAt), { addSuffix: true })}
+                    {p.mode} • {p.owner} • last run {hydrated ? formatDistanceToNow(new Date(p.lastRunAt), { addSuffix: true }) : "—"}
                   </div>
                 </div>
                 <div className="hidden text-right text-xs md:block">
@@ -245,7 +247,7 @@ function DashboardPage() {
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-mono text-xs">{p.name}</div>
                     <div className="text-[11px] text-muted-foreground">
-                      {formatDistanceToNow(new Date(r.startedAt), { addSuffix: true })} • {r.durationSec}s • {r.rows.toLocaleString()} rows
+                      {hydrated ? formatDistanceToNow(new Date(r.startedAt), { addSuffix: true }) : "just now"} • {r.durationSec}s • {r.rows.toLocaleString()} rows
                     </div>
                   </div>
                 </div>
