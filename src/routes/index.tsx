@@ -67,6 +67,7 @@ function DashboardPage() {
   const runs = usePlatform((s) => s.runs);
   const sources = usePlatform((s) => s.sources);
   const alerts = usePlatform((s) => s.alerts);
+  const hydrated = useHydrated();
 
   const running = pipelines.filter((p) => p.status === "running").length;
   const failed = pipelines.filter((p) => p.status === "failed" || p.status === "degraded").length;
