@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Database, GitBranch, Activity, Network, ScrollText,
-  Bell, BookMarked, Sparkles, Settings, Waves, Boxes, ShieldCheck,
+  Bell, BookMarked, Sparkles, Settings, Waves, Boxes, ShieldCheck, AlertOctagon,
 } from "lucide-react";
 
 import {
@@ -18,6 +18,7 @@ const platform = [
   { title: "Lineage", url: "/lineage", icon: Network },
 ];
 const insights = [
+  { title: "Incidents", url: "/incidents", icon: AlertOctagon },
   { title: "Logs", url: "/logs", icon: ScrollText },
   { title: "Alerts", url: "/alerts", icon: Bell },
   { title: "Data Catalog", url: "/catalog", icon: BookMarked },

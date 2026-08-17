@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Activity, AlertTriangle, CheckCircle2, Clock, DollarSign, Database,
-  GitBranch, Zap, TrendingUp, ArrowUpRight, Play,
+  GitBranch, Zap, TrendingUp, ArrowUpRight, Play, AlertOctagon,
 } from "lucide-react";
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart,
@@ -14,6 +14,8 @@ import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePlatform } from "@/lib/mock/store";
+import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { seedCost7d, seedThroughput } from "@/lib/mock/seed";
 
@@ -67,7 +69,17 @@ function DashboardPage() {
   const runs = usePlatform((s) => s.runs);
   const sources = usePlatform((s) => s.sources);
   const alerts = usePlatform((s) => s.alerts);
+  const incidents = usePlatform((s) => s.incidents);
+  const runDemoIncident = usePlatform((s) => s.runDemoIncident);
+  const navigate = useNavigate();
   const hydrated = useHydrated();
+
+  const openIncidents = incidents.filter((i) => i.status !== "resolved");
+  const triggerDemoIncident = () => {
+    const inc = runDemoIncident();
+    toast.error(`${inc.ref} opened`, { description: inc.title });
+    navigate({ to: "/incidents/$id", params: { id: inc.id } });
+  };
 
   const running = pipelines.filter((p) => p.status === "running").length;
   const failed = pipelines.filter((p) => p.status === "failed" || p.status === "degraded").length;
@@ -97,6 +109,9 @@ function DashboardPage() {
         actions={
           <>
             <Button variant="outline" asChild><Link to="/monitoring">Open Monitoring</Link></Button>
+            <Button variant="outline" onClick={triggerDemoIncident}>
+              <Zap className="mr-2 h-4 w-4" />Run demo incident
+            </Button>
             <Button asChild><Link to="/pipelines/new">New Pipeline</Link></Button>
           </>
         }
@@ -111,6 +126,7 @@ function DashboardPage() {
         <KpiCard label="Quality Score" value={`${avgQuality}`} tone="success" icon={CheckCircle2} sub="of 100" />
         <KpiCard label="Active Sources" value={`${activeSources}/${sources.length}`} tone="primary" icon={Database} />
         <KpiCard label="Avg Runtime" value={`${Math.round(avgRuntime / 60)}m ${avgRuntime % 60}s`} tone="info" icon={Clock} />
+        <KpiCard label="Open Incidents" value={String(openIncidents.length)} tone={openIncidents.length ? "danger" : "success"} icon={AlertOctagon} sub={`${openIncidents.reduce((a, i) => a + i.impact.blockedRows, 0).toLocaleString()} rows blocked`} />
         <KpiCard label="Alerts (24h)" value={String(alerts.length)} tone="danger" icon={AlertTriangle} sub={`${alerts.filter((a) => !a.ack).length} unacked`} />
         <KpiCard label="Storage" value="482 TB" tone="primary" icon={Database} sub="of 1 PB" />
         <KpiCard label="Active Pipelines" value={String(pipelines.length)} tone="info" icon={GitBranch} />
