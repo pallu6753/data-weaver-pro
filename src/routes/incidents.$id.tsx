@@ -45,6 +45,7 @@ function IncidentDetailPage() {
   const executions = usePlatform((s) => s.executions);
   const applyCopilotFix = usePlatform((s) => s.applyCopilotFix);
   const replayFailedRecords = usePlatform((s) => s.replayFailedRecords);
+  const setIncidentStatus = usePlatform((s) => s.setIncidentStatus);
   const hydrated = useHydrated();
   const [busy, setBusy] = useState(false);
 
@@ -101,7 +102,15 @@ function IncidentDetailPage() {
                 <Sparkles className="mr-2 h-4 w-4" />Apply Copilot fix
               </Button>
             )}
-            {incident.fixApplied && incident.status !== "resolved" && (
+            {incident.replay && incident.status !== "resolved" && (
+              <Button variant="outline" onClick={() => {
+                setIncidentStatus(incident.id, "resolved");
+                toast.success("Incident closed", { description: `${incident.replay!.stillFailing.toLocaleString()} unrecoverable rows routed to the dead-letter table.` });
+              }}>
+                <CheckCircle2 className="mr-2 h-4 w-4" />Close incident
+              </Button>
+            )}
+            {incident.fixApplied && !incident.replay && (
               <Button onClick={onReplay} disabled={busy}>
                 <RotateCcw className="mr-2 h-4 w-4" />Replay {incident.failedCount.toLocaleString()} failed records
               </Button>
@@ -138,7 +147,7 @@ function IncidentDetailPage() {
             <span className="font-medium">Replay run {incident.replay.runId}</span>
             <span className="text-muted-foreground">
               {incident.replay.recovered.toLocaleString()} rows recovered ·{" "}
-              {incident.replay.stillFailing.toLocaleString()} still failing
+              {incident.replay.stillFailing.toLocaleString()} unrecoverable (null total_amount upstream) → dead-letter table
             </span>
           </CardContent>
         </Card>
