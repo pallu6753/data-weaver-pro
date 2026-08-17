@@ -19,8 +19,10 @@ import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PipelinesIndexRouteImport } from './routes/pipelines.index'
+import { Route as IncidentsIndexRouteImport } from './routes/incidents.index'
 import { Route as PipelinesNewRouteImport } from './routes/pipelines.new'
 import { Route as PipelinesIdRouteImport } from './routes/pipelines.$id'
+import { Route as IncidentsIdRouteImport } from './routes/incidents.$id'
 
 const SourcesRoute = SourcesRouteImport.update({
   id: '/sources',
@@ -72,6 +74,11 @@ const PipelinesIndexRoute = PipelinesIndexRouteImport.update({
   path: '/pipelines/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IncidentsIndexRoute = IncidentsIndexRouteImport.update({
+  id: '/incidents/',
+  path: '/incidents/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PipelinesNewRoute = PipelinesNewRouteImport.update({
   id: '/pipelines/new',
   path: '/pipelines/new',
@@ -80,6 +87,11 @@ const PipelinesNewRoute = PipelinesNewRouteImport.update({
 const PipelinesIdRoute = PipelinesIdRouteImport.update({
   id: '/pipelines/$id',
   path: '/pipelines/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IncidentsIdRoute = IncidentsIdRouteImport.update({
+  id: '/incidents/$id',
+  path: '/incidents/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -93,8 +105,10 @@ export interface FileRoutesByFullPath {
   '/monitoring': typeof MonitoringRoute
   '/settings': typeof SettingsRoute
   '/sources': typeof SourcesRoute
+  '/incidents/$id': typeof IncidentsIdRoute
   '/pipelines/$id': typeof PipelinesIdRoute
   '/pipelines/new': typeof PipelinesNewRoute
+  '/incidents/': typeof IncidentsIndexRoute
   '/pipelines/': typeof PipelinesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -107,8 +121,10 @@ export interface FileRoutesByTo {
   '/monitoring': typeof MonitoringRoute
   '/settings': typeof SettingsRoute
   '/sources': typeof SourcesRoute
+  '/incidents/$id': typeof IncidentsIdRoute
   '/pipelines/$id': typeof PipelinesIdRoute
   '/pipelines/new': typeof PipelinesNewRoute
+  '/incidents': typeof IncidentsIndexRoute
   '/pipelines': typeof PipelinesIndexRoute
 }
 export interface FileRoutesById {
@@ -122,8 +138,10 @@ export interface FileRoutesById {
   '/monitoring': typeof MonitoringRoute
   '/settings': typeof SettingsRoute
   '/sources': typeof SourcesRoute
+  '/incidents/$id': typeof IncidentsIdRoute
   '/pipelines/$id': typeof PipelinesIdRoute
   '/pipelines/new': typeof PipelinesNewRoute
+  '/incidents/': typeof IncidentsIndexRoute
   '/pipelines/': typeof PipelinesIndexRoute
 }
 export interface FileRouteTypes {
@@ -138,8 +156,10 @@ export interface FileRouteTypes {
     | '/monitoring'
     | '/settings'
     | '/sources'
+    | '/incidents/$id'
     | '/pipelines/$id'
     | '/pipelines/new'
+    | '/incidents/'
     | '/pipelines/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -152,8 +172,10 @@ export interface FileRouteTypes {
     | '/monitoring'
     | '/settings'
     | '/sources'
+    | '/incidents/$id'
     | '/pipelines/$id'
     | '/pipelines/new'
+    | '/incidents'
     | '/pipelines'
   id:
     | '__root__'
@@ -166,8 +188,10 @@ export interface FileRouteTypes {
     | '/monitoring'
     | '/settings'
     | '/sources'
+    | '/incidents/$id'
     | '/pipelines/$id'
     | '/pipelines/new'
+    | '/incidents/'
     | '/pipelines/'
   fileRoutesById: FileRoutesById
 }
@@ -181,8 +205,10 @@ export interface RootRouteChildren {
   MonitoringRoute: typeof MonitoringRoute
   SettingsRoute: typeof SettingsRoute
   SourcesRoute: typeof SourcesRoute
+  IncidentsIdRoute: typeof IncidentsIdRoute
   PipelinesIdRoute: typeof PipelinesIdRoute
   PipelinesNewRoute: typeof PipelinesNewRoute
+  IncidentsIndexRoute: typeof IncidentsIndexRoute
   PipelinesIndexRoute: typeof PipelinesIndexRoute
 }
 
@@ -258,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PipelinesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/incidents/': {
+      id: '/incidents/'
+      path: '/incidents'
+      fullPath: '/incidents/'
+      preLoaderRoute: typeof IncidentsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pipelines/new': {
       id: '/pipelines/new'
       path: '/pipelines/new'
@@ -270,6 +303,13 @@ declare module '@tanstack/react-router' {
       path: '/pipelines/$id'
       fullPath: '/pipelines/$id'
       preLoaderRoute: typeof PipelinesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/incidents/$id': {
+      id: '/incidents/$id'
+      path: '/incidents/$id'
+      fullPath: '/incidents/$id'
+      preLoaderRoute: typeof IncidentsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -285,10 +325,22 @@ const rootRouteChildren: RootRouteChildren = {
   MonitoringRoute: MonitoringRoute,
   SettingsRoute: SettingsRoute,
   SourcesRoute: SourcesRoute,
+  IncidentsIdRoute: IncidentsIdRoute,
   PipelinesIdRoute: PipelinesIdRoute,
   PipelinesNewRoute: PipelinesNewRoute,
+  IncidentsIndexRoute: IncidentsIndexRoute,
   PipelinesIndexRoute: PipelinesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
