@@ -114,6 +114,57 @@ export const usePlatform = create<PlatformState>((set, get) => ({
 
   loadBatch: (records, label) => set({ batch: records, batchLabel: label, driftActive: false }),
 
+  loadBatch: (records, label) => set({ batch: records, batchLabel: label, driftActive: false }),
+
+  registerUpload: (ds) => set((st) => ({
+    uploads: [ds, ...st.uploads.filter((u) => u.id !== ds.id)],
+    activeUploadId: ds.id,
+    // The uploaded rows become the rows every pipeline run processes.
+    batch: ds.rawRows,
+    batchLabel: `${ds.name} · ${ds.rowCount.toLocaleString()} rows (${ds.fileName})`,
+    driftActive: false,
+    datasets: [
+      {
+        id: ds.id,
+        name: `bronze.${ds.name}`,
+        zone: "bronze" as const,
+        warehouse: "NexusFlow Lake",
+        schema: "bronze",
+        rows: ds.rowCount,
+        sizeMb: +((ds.rowCount * ds.columnCount * 24) / 1_048_576).toFixed(2),
+        owner: "you",
+        tags: ["uploaded", "csv"],
+        columns: ds.columns.map((c) => ({
+          name: c.name,
+          type: c.type.toUpperCase(),
+          nullable: c.nullable,
+          pii: /email|phone|ssn|address|name/i.test(c.name),
+        })),
+        updatedAt: ds.uploadedAt,
+        popularity: 1,
+        description: `Ingested from ${ds.fileName} — ${ds.rowCount.toLocaleString()} rows, ${ds.columnCount} columns.`,
+      },
+      ...st.datasets.filter((d) => d.id !== ds.id),
+    ],
+  })),
+
+  setActiveUpload: (id) => set((st) => {
+    const ds = st.uploads.find((u) => u.id === id);
+    if (!ds) return {};
+    return {
+      activeUploadId: id,
+      batch: ds.rawRows,
+      batchLabel: `${ds.name} · ${ds.rowCount.toLocaleString()} rows (${ds.fileName})`,
+      driftActive: false,
+    };
+  }),
+
+  getActiveRows: () => {
+    const st = get();
+    const active = st.uploads.find((u) => u.id === st.activeUploadId);
+    return active && !st.driftActive ? active.rawRows : st.batch;
+  },
+
   executePipeline: (pipelineId) => {
     const res = executeBatch({ pipelineId, records: get().batch, contract: ordersContract });
     set((st) => ({
