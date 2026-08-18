@@ -165,7 +165,7 @@ export const usePlatform = create<PlatformState>((set, get) => ({
   },
 
   executePipeline: (pipelineId) => {
-    const res = executeBatch({ pipelineId, records: get().batch, contract: ordersContract });
+    const res = executeBatch({ pipelineId, records: get().getActiveRows(), contract: ordersContract });
     set((st) => ({
       executions: [res, ...st.executions],
       runs: [executionToRun(res), ...st.runs],
