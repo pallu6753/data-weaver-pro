@@ -3,6 +3,19 @@ import type {
   Pipeline, PipelineRun,
 } from "./types";
 
+// Deterministic PRNG — SSR and client must produce identical seed data,
+// otherwise React hydration fails on rendered numbers.
+function mulberry(seed: number) {
+  return () => {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rnd = mulberry(20260401);
+
 const now = Date.now();
 const ago = (mins: number) => new Date(now - mins * 60_000).toISOString();
 
@@ -161,9 +174,9 @@ export const seedRuns: PipelineRun[] = Array.from({ length: 60 }).flatMap((_, i)
     pipelineId: p.id,
     status: running ? "running" : failed ? "failed" : "success",
     startedAt: ago(i * 18 + 3),
-    durationSec: Math.round(p.avgDurationSec * (0.8 + Math.random() * 0.5)),
-    rows: Math.round(p.rowsProcessedToday / 40 * (0.7 + Math.random() * 0.6)),
-    costUsd: +(p.costUsdToday / 40 * (0.7 + Math.random() * 0.6)).toFixed(2),
+    durationSec: Math.round(p.avgDurationSec * (0.8 + rnd() * 0.5)),
+    rows: Math.round(p.rowsProcessedToday / 40 * (0.7 + rnd() * 0.6)),
+    costUsd: +(p.costUsdToday / 40 * (0.7 + rnd() * 0.6)).toFixed(2),
     triggeredBy: (i % 7 === 0 ? "manual" : "schedule") as "manual" | "schedule",
   } satisfies PipelineRun];
 });
@@ -268,13 +281,13 @@ export const seedLineage: { nodes: LineageNode[]; edges: LineageEdge[] } = {
 // 24h time series
 export const seedThroughput = Array.from({ length: 24 }).map((_, h) => ({
   hour: `${String(h).padStart(2, "0")}:00`,
-  batch: Math.round(200_000 + Math.sin(h / 3) * 90_000 + Math.random() * 40_000),
-  streaming: Math.round(380_000 + Math.cos(h / 4) * 120_000 + Math.random() * 60_000),
+  batch: Math.round(200_000 + Math.sin(h / 3) * 90_000 + rnd() * 40_000),
+  streaming: Math.round(380_000 + Math.cos(h / 4) * 120_000 + rnd() * 60_000),
 }));
 
 export const seedCost7d = Array.from({ length: 7 }).map((_, d) => ({
   day: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][d],
-  compute: +(120 + Math.random() * 60).toFixed(2),
-  storage: +(40 + Math.random() * 15).toFixed(2),
-  egress: +(18 + Math.random() * 10).toFixed(2),
+  compute: +(120 + rnd() * 60).toFixed(2),
+  storage: +(40 + rnd() * 15).toFixed(2),
+  egress: +(18 + rnd() * 10).toFixed(2),
 }));
