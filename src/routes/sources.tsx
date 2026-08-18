@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { CsvUploadCard } from "@/components/csv-upload-card";
+import { PipelineFlowGraph } from "@/components/pipeline-flow-graph";
 import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,6 +64,12 @@ function KindIcon({ kind }: { kind: ConnectorKind }) {
 function SourcesPage() {
   const sources = usePlatform((s) => s.sources);
   const addSource = usePlatform((s) => s.addSource);
+  const uploads = usePlatform((s) => s.uploads);
+  const activeUploadId = usePlatform((s) => s.activeUploadId);
+  const pipelines = usePlatform((s) => s.pipelines);
+  const activePipelineId = usePlatform((s) => s.activePipelineId);
+  const setActivePipeline = usePlatform((s) => s.setActivePipeline);
+  const progress = usePlatform((s) => activePipelineId ? s.executionProgress[activePipelineId] : undefined);
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<ConnectorKind>("postgres");
   const [name, setName] = useState("");
@@ -81,6 +88,8 @@ function SourcesPage() {
   };
 
   const groups = Array.from(new Set(CONNECTORS.map((c) => c.group)));
+  const activeUpload = uploads.find((upload) => upload.id === activeUploadId);
+  const activePipeline = pipelines.find((pipeline) => pipeline.id === activePipelineId);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6 p-6 lg:p-8">
@@ -123,6 +132,26 @@ function SourcesPage() {
       />
 
       <CsvUploadCard />
+
+      <Card className="glass border-border/60">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="text-base">Active Pipeline</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">Pipeline that will process the active batch.</p>
+          </div>
+          {activeUpload && pipelines.length > 0 && (
+            <Select value={activePipelineId ?? undefined} onValueChange={setActivePipeline}>
+              <SelectTrigger className="w-full sm:w-[280px]"><SelectValue placeholder="Select pipeline" /></SelectTrigger>
+              <SelectContent>{pipelines.map((pipeline) => <SelectItem key={pipeline.id} value={pipeline.id}>{pipeline.name}</SelectItem>)}</SelectContent>
+            </Select>
+          )}
+        </CardHeader>
+        <CardContent>
+          {activeUpload && activePipeline
+            ? <PipelineFlowGraph pipeline={activePipeline} progress={progress} height="420px" />
+            : <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-border/60 bg-background/30 text-sm text-muted-foreground">No active pipeline selected</div>}
+        </CardContent>
+      </Card>
 
 
 

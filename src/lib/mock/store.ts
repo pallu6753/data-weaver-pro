@@ -5,13 +5,19 @@ import {
 import type {
   Alert, DataSource, Dataset, LineageEdge, LineageNode, LogLine, Pipeline, PipelineRun,
 } from "./types";
-import { ordersContract, type RawRecord } from "@/lib/engine/contracts";
+import { ordersContract, type DataContract, type RawRecord } from "@/lib/engine/contracts";
 import { applyDrift, applyRenameFix, generateOrders, ORDERS_DRIFT } from "@/lib/engine/dataset";
-import { executeBatch, type ExecutionResult } from "@/lib/engine/execution";
+import { executeBatch, executeConfiguredPipeline, type ExecutionEvent, type ExecutionResult } from "@/lib/engine/execution";
 import { buildIncident, type Incident } from "@/lib/engine/incident";
 import type { IngestedDataset } from "@/lib/engine/ingest";
 
 export const DEMO_PIPELINE_ID = "pl_orders_bronze_gold";
+
+export type GraphNodeStatus = "pending" | "running" | "success" | "failed";
+export interface PipelineExecutionProgress {
+  runId: string;
+  nodeStatuses: Record<string, GraphNodeStatus>;
+}
 
 interface PlatformState {
   sources: DataSource[];
@@ -27,25 +33,30 @@ interface PlatformState {
   batchLabel: string;
   driftActive: boolean;
   executions: ExecutionResult[];
+  /** Live and final node state for the existing React Flow pipeline graph. */
+  executionProgress: Record<string, PipelineExecutionProgress>;
   incidents: Incident[];
 
   /** Uploaded CSV datasets, raw rows included. */
   uploads: IngestedDataset[];
   activeUploadId: string | null;
+  /** Selected pipeline for the active uploaded CSV batch. */
+  activePipelineId: string | null;
 
   addSource: (s: DataSource) => void;
   addPipeline: (p: Pipeline) => void;
   updatePipeline: (id: string, patch: Partial<Pipeline>) => void;
-  triggerRun: (pipelineId: string) => PipelineRun;
+  triggerRun: (pipelineId: string) => Promise<PipelineRun>;
   ackAlert: (id: string) => void;
 
   loadBatch: (records: RawRecord[], label: string) => void;
   /** Registers a parsed CSV upload and makes its raw rows the active batch. */
   registerUpload: (ds: IngestedDataset) => void;
   setActiveUpload: (id: string) => void;
-  /** Rows a pipeline should process: the active upload, else the generated batch. */
+  setActivePipeline: (id: string | null) => void;
+  /** Rows a pipeline should process: the active uploaded CSV only. */
   getActiveRows: () => RawRecord[];
-  executePipeline: (pipelineId: string) => ExecutionResult;
+  executePipeline: (pipelineId: string) => Promise<ExecutionResult>;
   runDemoIncident: () => Incident;
   applyCopilotFix: (incidentId: string) => void;
   replayFailedRecords: (incidentId: string) => { recovered: number; stillFailing: number };
@@ -77,6 +88,29 @@ function executionToLogs(res: ExecutionResult): LogLine[] {
   }));
 }
 
+function contractForUpload(upload: IngestedDataset): DataContract {
+  const headerSet = new Set(upload.columns.map((column) => column.name));
+  // Keep the established Orders contract when the uploaded schema is Orders-shaped.
+  if (ordersContract.fields.every((field) => headerSet.has(field.name))) return ordersContract;
+  return {
+    id: `dc_${upload.id}`,
+    name: `${upload.name}.inferred`,
+    version: "1.0.0",
+    owner: "you",
+    dataset: upload.name,
+    fields: upload.columns.map((column) => ({
+      name: column.name,
+      type: column.type === "integer" || column.type === "decimal" ? "number" : column.type === "date" || column.type === "datetime" ? "timestamp" : "string",
+      required: !column.nullable,
+      description: `Inferred from ${upload.fileName}`,
+    })),
+  };
+}
+
+function runningRun(pipelineId: string, runId: string, startedAt: string): PipelineRun {
+  return { id: runId, pipelineId, status: "running", startedAt, durationSec: 0, rows: 0, costUsd: 0, triggeredBy: "manual" };
+}
+
 export const usePlatform = create<PlatformState>((set, get) => ({
   sources: seedSources,
   pipelines: seedPipelines,
@@ -90,9 +124,11 @@ export const usePlatform = create<PlatformState>((set, get) => ({
   batchLabel: "orders_demo · 500 rows (generated)",
   driftActive: false,
   executions: [],
+  executionProgress: {},
   incidents: [],
   uploads: [],
   activeUploadId: null,
+  activePipelineId: null,
 
   addSource: (s) => set((st) => ({ sources: [s, ...st.sources] })),
   addPipeline: (p) => set((st) => ({
@@ -106,7 +142,7 @@ export const usePlatform = create<PlatformState>((set, get) => ({
     pipelines: st.pipelines.map((p) => (p.id === id ? { ...p, ...patch } : p)),
   })),
 
-  triggerRun: (pipelineId) => executionToRun(get().executePipeline(pipelineId)),
+  triggerRun: async (pipelineId) => get().executePipeline(pipelineId).then(executionToRun),
 
   ackAlert: (id) => set((st) => ({
     alerts: st.alerts.map((a) => (a.id === id ? { ...a, ack: true } : a)),
@@ -118,6 +154,9 @@ export const usePlatform = create<PlatformState>((set, get) => ({
 
     uploads: [ds, ...st.uploads.filter((u) => u.id !== ds.id)],
     activeUploadId: ds.id,
+    activePipelineId: st.activePipelineId && st.pipelines.some((pipeline) => pipeline.id === st.activePipelineId)
+      ? st.activePipelineId
+      : st.pipelines[0]?.id ?? null,
     // The uploaded rows become the rows every pipeline run processes.
     batch: ds.rawRows,
     batchLabel: `${ds.name} · ${ds.rowCount.toLocaleString()} rows (${ds.fileName})`,
@@ -158,34 +197,124 @@ export const usePlatform = create<PlatformState>((set, get) => ({
     };
   }),
 
+  setActivePipeline: (id) => set({ activePipelineId: id }),
+
   getActiveRows: () => {
     const st = get();
     const active = st.uploads.find((u) => u.id === st.activeUploadId);
-    return active && !st.driftActive ? active.rawRows : st.batch;
+    return active && !st.driftActive ? active.rawRows : [];
   },
 
-  executePipeline: (pipelineId) => {
-    const res = executeBatch({ pipelineId, records: get().getActiveRows(), contract: ordersContract });
+  executePipeline: async (pipelineId) => {
+    const state = get();
+    const pipeline = state.pipelines.find((p) => p.id === pipelineId);
+    if (!pipeline) throw new Error("Pipeline not found.");
+    const alreadyRunning = state.runs.find((run) => run.pipelineId === pipelineId && run.status === "running");
+    if (alreadyRunning) throw new Error("This pipeline is already running.");
+
+    const runId = `run_${pipelineId}_${Date.now()}`;
+    const startedAt = new Date().toISOString();
+    const appendLog = (level: LogLine["level"], message: string, node?: string) => set((st) => ({
+      logs: [{ id: `${runId}_live_${st.logs.length}`, runId, pipelineId, ts: new Date().toISOString(), level, message, node }, ...st.logs],
+    }));
     set((st) => ({
-      executions: [res, ...st.executions],
-      runs: [executionToRun(res), ...st.runs],
-      logs: [...executionToLogs(res), ...st.logs],
+      runs: [runningRun(pipelineId, runId, startedAt), ...st.runs],
+      activePipelineId: pipelineId,
+      pipelines: st.pipelines.map((p) => p.id === pipelineId ? { ...p, status: "running" } : p),
+      executionProgress: {
+        ...st.executionProgress,
+        [pipelineId]: {
+          runId,
+          nodeStatuses: Object.fromEntries(pipeline.nodes.map((node) => [node.id, "pending" as const])),
+        },
+      },
+    }));
+    appendLog("info", "Pipeline execution started", pipeline.nodes[0]?.label);
+
+    const activeUpload = get().uploads.find((upload) => upload.id === get().activeUploadId);
+    let result: ExecutionResult;
+    try {
+      if (!activeUpload) throw new Error("No active CSV dataset. Upload or select a CSV before running the pipeline.");
+      const onEvent = (event: ExecutionEvent) => {
+        const status: GraphNodeStatus = event.kind === "node-started" ? "running" : event.kind === "node-completed" ? "success" : "failed";
+        set((st) => {
+          const progress = st.executionProgress[pipelineId];
+          if (!progress || progress.runId !== runId) return {};
+          return {
+            executionProgress: {
+              ...st.executionProgress,
+              [pipelineId]: { ...progress, nodeStatuses: { ...progress.nodeStatuses, [event.node.id]: status } },
+            },
+          };
+        });
+        if (event.kind === "node-started") appendLog("info", "Node started", event.node.label);
+        if (event.kind === "node-completed") appendLog("info", `Node completed — ${event.rowsOut.toLocaleString()} rows processed`, event.node.label);
+        if (event.kind === "node-failed") appendLog("error", `Execution error — ${event.message}`, event.node.label);
+      };
+      result = await executeConfiguredPipeline({
+        pipeline,
+        records: activeUpload.rawRows,
+        contract: contractForUpload(activeUpload),
+        runId,
+        onEvent,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unexpected execution error";
+      const completedAt = new Date().toISOString();
+      result = {
+        runId, pipelineId, startedAt, finishedAt: completedAt,
+        durationMs: new Date(completedAt).getTime() - new Date(startedAt).getTime(), status: "failed",
+        stages: [], validation: { total: 0, passed: 0, failed: 0, records: [], failedRecords: [], byRule: [], missingFields: [], unexpectedFields: [] }, profile: [],
+        rowsLoaded: 0, rowsRead: activeUpload?.rawRows.length ?? 0, rowsProcessed: 0, rowsFailed: 0, qualityScore: 0, costUsd: 0,
+        logs: [{ ts: completedAt, level: "error", stage: "execution", message }],
+      };
+      appendLog("error", `Pipeline failed — ${message}`, "execution");
+    }
+
+    set((st) => ({
+      executions: [result, ...st.executions],
+      runs: st.runs.map((run) => run.id === runId ? executionToRun(result) : run),
+      logs: [...executionToLogs(result), ...st.logs],
       pipelines: st.pipelines.map((p) => p.id === pipelineId ? {
         ...p,
-        status: res.status === "failed" ? "failed" : res.status === "partial" ? "degraded" : "healthy",
-        lastRunAt: res.finishedAt,
-        qualityScore: res.qualityScore,
-        rowsProcessedToday: p.rowsProcessedToday + res.rowsLoaded,
-        avgDurationSec: Math.round(res.durationMs / 1000),
+        status: result.status === "failed" ? "failed" : "healthy",
+        lastRunAt: result.finishedAt,
+        qualityScore: result.qualityScore,
+        rowsProcessedToday: p.rowsProcessedToday + result.rowsProcessed,
+        avgDurationSec: Math.max(0, Math.round(result.durationMs / 1000)),
       } : p),
+      executionProgress: {
+        ...st.executionProgress,
+        [pipelineId]: {
+          runId,
+          nodeStatuses: {
+            ...Object.fromEntries(pipeline.nodes.map((node) => [node.id, "pending" as const])),
+            ...Object.fromEntries(result.stages.map((stage) => [stage.id, stage.status === "success" ? "success" : "failed"])),
+          },
+        },
+      },
     }));
-    return res;
+    if (result.status === "failed") throw new Error(result.logs.at(-1)?.message ?? "Pipeline execution failed.");
+    return result;
   },
 
   runDemoIncident: () => {
     const drifted = applyDrift(generateOrders());
     set({ batch: drifted, batchLabel: "orders_demo · 500 rows (post-migration payload)", driftActive: true });
-    const res = get().executePipeline(DEMO_PIPELINE_ID);
+    const res = executeBatch({ pipelineId: DEMO_PIPELINE_ID, records: drifted, contract: ordersContract });
+    set((st) => ({
+      executions: [res, ...st.executions],
+      runs: [executionToRun(res), ...st.runs],
+      logs: [...executionToLogs(res), ...st.logs],
+      pipelines: st.pipelines.map((p) => p.id === DEMO_PIPELINE_ID ? {
+        ...p,
+        status: "failed",
+        lastRunAt: res.finishedAt,
+        qualityScore: res.qualityScore,
+        rowsProcessedToday: p.rowsProcessedToday + res.rowsProcessed,
+        avgDurationSec: Math.round(res.durationMs / 1000),
+      } : p),
+    }));
     const incident = buildIncident(res, ORDERS_DRIFT);
     set((st) => ({
       incidents: [incident, ...st.incidents],

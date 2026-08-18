@@ -1,13 +1,8 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import ReactFlow, {
-  Background, BackgroundVariant, Controls, MiniMap, Handle, Position,
-  type Node, type Edge, type NodeProps,
-} from "reactflow";
-import "reactflow/dist/style.css";
+import { useState } from "react";
 import {
   ArrowLeft, Play, Pause, Settings, Database, Filter, GitMerge, Code2,
-  FlaskConical, Sparkles, Send, Bell, Boxes,
+  FlaskConical, Sparkles, Bell, Boxes,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -19,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePlatform } from "@/lib/mock/store";
+import { PipelineFlowGraph } from "@/components/pipeline-flow-graph";
 
 export const Route = createFileRoute("/pipelines/$id")({
   head: ({ params }) => ({ meta: [{ title: `${params.id} — Pipeline — NexusFlow` }] }),
@@ -34,52 +30,18 @@ const iconFor = (type: string) => {
   return map[type] ?? Code2;
 };
 
-function NexusNode({ data }: NodeProps<{ label: string; type: string }>) {
-  const Icon = iconFor(data.type);
-  const tone: Record<string, string> = {
-    source: "border-[color:var(--info)]/50 shadow-[0_0_20px_oklch(0.72_0.15_240/0.25)]",
-    destination: "border-[color:var(--success)]/50 shadow-[0_0_20px_oklch(0.70_0.17_155/0.25)]",
-    quality: "border-[color:var(--warning)]/50",
-    notify: "border-[color:var(--destructive)]/50",
-  };
-  return (
-    <div className={`glass-strong min-w-[180px] rounded-xl border-2 p-3 ${tone[data.type] ?? "border-primary/50"}`}>
-      <Handle type="target" position={Position.Left} className="!h-2 !w-2 !border-primary !bg-primary" />
-      <div className="flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[image:var(--gradient-brand)]">
-          <Icon className="h-4 w-4 text-white" />
-        </div>
-        <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{data.type}</div>
-          <div className="truncate text-xs font-medium">{data.label}</div>
-        </div>
-      </div>
-      <Handle type="source" position={Position.Right} className="!h-2 !w-2 !border-primary !bg-primary" />
-    </div>
-  );
-}
-
-const nodeTypes = { nexus: NexusNode };
-
 function PipelineDetail() {
   const { id } = Route.useParams();
   const pipeline = usePlatform((s) => s.pipelines.find((p) => p.id === id));
   const runs = usePlatform((s) => s.runs.filter((r) => r.pipelineId === id));
   const logs = usePlatform((s) => s.logs.filter((l) => l.pipelineId === id));
+  const progress = usePlatform((s) => s.executionProgress[id]);
   const triggerRun = usePlatform((s) => s.triggerRun);
   const updatePipeline = usePlatform((s) => s.updatePipeline);
 
   if (!pipeline) throw notFound();
 
   const [selected, setSelected] = useState<string | null>(null);
-
-  const nodes: Node[] = useMemo(() => pipeline.nodes.map((n) => ({
-    id: n.id, position: n.position, data: { label: n.label, type: n.type }, type: "nexus",
-  })), [pipeline]);
-  const edges: Edge[] = useMemo(() => pipeline.edges.map((e) => ({
-    id: e.id, source: e.source, target: e.target, animated: pipeline.status === "running",
-    style: { stroke: "oklch(0.68 0.20 265)", strokeWidth: 2 },
-  })), [pipeline]);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6 p-6 lg:p-8">
@@ -100,7 +62,11 @@ function PipelineDetail() {
             }}>
               {pipeline.status === "paused" ? <><Play className="h-4 w-4" />Resume</> : <><Pause className="h-4 w-4" />Pause</>}
             </Button>
-            <Button onClick={() => { triggerRun(pipeline.id); toast.success("Run triggered"); }}>
+            <Button disabled={pipeline.status === "running"} onClick={() => {
+              void triggerRun(pipeline.id)
+                .then(() => toast.success("Pipeline completed"))
+                .catch((error: unknown) => toast.error("Pipeline failed", { description: error instanceof Error ? error.message : "Unexpected execution error" }));
+            }}>
               <Play className="h-4 w-4" />Run now
             </Button>
           </>
@@ -135,18 +101,7 @@ function PipelineDetail() {
           <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
             <Card className="glass border-border/60">
               <CardContent className="p-2">
-                <div className="h-[520px] overflow-hidden rounded-lg" style={{ background: "oklch(0.12 0.03 265)" }}>
-                  <ReactFlow
-                    nodes={nodes} edges={edges} nodeTypes={nodeTypes}
-                    fitView proOptions={{ hideAttribution: true }}
-                    onNodeClick={(_, n) => setSelected(n.id)}
-                  >
-                    <Background variant={BackgroundVariant.Dots} gap={20} color="oklch(0.35 0.05 265 / 0.4)" />
-                    <Controls className="!border-border !bg-card !text-foreground" />
-                    <MiniMap pannable zoomable maskColor="oklch(0.10 0.03 265 / 0.8)"
-                      nodeColor={() => "oklch(0.68 0.20 265)"} className="!border-border !bg-card" />
-                  </ReactFlow>
-                </div>
+                <PipelineFlowGraph pipeline={pipeline} progress={progress} onNodeSelect={setSelected} />
               </CardContent>
             </Card>
 
