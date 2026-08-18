@@ -13,6 +13,15 @@ import type { IngestedDataset } from "@/lib/engine/ingest";
 
 export const DEMO_PIPELINE_ID = "pl_orders_bronze_gold";
 
+export interface QuarantinedRecord {
+  id: string;
+  incidentId: string;
+  record: RawRecord;
+  reason: string;
+  status: "quarantined" | "replayed" | "failed";
+  quarantinedAt: string;
+  replayedAt?: string;
+}
 interface PlatformState {
   sources: DataSource[];
   pipelines: Pipeline[];
@@ -28,6 +37,7 @@ interface PlatformState {
   driftActive: boolean;
   executions: ExecutionResult[];
   incidents: Incident[];
+  quarantine: QuarantinedRecord[];
 
   /** Uploaded CSV datasets, raw rows included. */
   uploads: IngestedDataset[];
@@ -91,6 +101,7 @@ export const usePlatform = create<PlatformState>((set, get) => ({
   driftActive: false,
   executions: [],
   incidents: [],
+  quarantine: [],
   uploads: [],
   activeUploadId: null,
 
