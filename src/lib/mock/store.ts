@@ -29,6 +29,10 @@ interface PlatformState {
   executions: ExecutionResult[];
   incidents: Incident[];
 
+  /** Uploaded CSV datasets, raw rows included. */
+  uploads: IngestedDataset[];
+  activeUploadId: string | null;
+
   addSource: (s: DataSource) => void;
   addPipeline: (p: Pipeline) => void;
   updatePipeline: (id: string, patch: Partial<Pipeline>) => void;
@@ -36,6 +40,11 @@ interface PlatformState {
   ackAlert: (id: string) => void;
 
   loadBatch: (records: RawRecord[], label: string) => void;
+  /** Registers a parsed CSV upload and makes its raw rows the active batch. */
+  registerUpload: (ds: IngestedDataset) => void;
+  setActiveUpload: (id: string) => void;
+  /** Rows a pipeline should process: the active upload, else the generated batch. */
+  getActiveRows: () => RawRecord[];
   executePipeline: (pipelineId: string) => ExecutionResult;
   runDemoIncident: () => Incident;
   applyCopilotFix: (incidentId: string) => void;
