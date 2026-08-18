@@ -17,7 +17,18 @@ export const Route = createFileRoute("/monitoring")({
   component: MonitoringPage,
 });
 
-const cpu = Array.from({ length: 30 }).map((_, i) => ({ t: i, cpu: 30 + Math.round(Math.sin(i / 2) * 15 + Math.random() * 10), mem: 45 + Math.round(Math.cos(i / 3) * 10 + Math.random() * 8) }));
+function mulberry(seed: number) {
+  return () => {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rnd = mulberry(9271);
+
+const cpu = Array.from({ length: 30 }).map((_, i) => ({ t: i, cpu: 30 + Math.round(Math.sin(i / 2) * 15 + rnd() * 10), mem: 45 + Math.round(Math.cos(i / 3) * 10 + rnd() * 8) }));
 
 function MonitoringPage() {
   const pipelines = usePlatform((s) => s.pipelines);

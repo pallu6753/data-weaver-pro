@@ -9,6 +9,7 @@ import { ordersContract, type RawRecord } from "@/lib/engine/contracts";
 import { applyDrift, applyRenameFix, generateOrders, ORDERS_DRIFT } from "@/lib/engine/dataset";
 import { executeBatch, type ExecutionResult } from "@/lib/engine/execution";
 import { buildIncident, type Incident } from "@/lib/engine/incident";
+import type { IngestedDataset } from "@/lib/engine/ingest";
 
 export const DEMO_PIPELINE_ID = "pl_orders_bronze_gold";
 
@@ -28,6 +29,10 @@ interface PlatformState {
   executions: ExecutionResult[];
   incidents: Incident[];
 
+  /** Uploaded CSV datasets, raw rows included. */
+  uploads: IngestedDataset[];
+  activeUploadId: string | null;
+
   addSource: (s: DataSource) => void;
   addPipeline: (p: Pipeline) => void;
   updatePipeline: (id: string, patch: Partial<Pipeline>) => void;
@@ -35,6 +40,11 @@ interface PlatformState {
   ackAlert: (id: string) => void;
 
   loadBatch: (records: RawRecord[], label: string) => void;
+  /** Registers a parsed CSV upload and makes its raw rows the active batch. */
+  registerUpload: (ds: IngestedDataset) => void;
+  setActiveUpload: (id: string) => void;
+  /** Rows a pipeline should process: the active upload, else the generated batch. */
+  getActiveRows: () => RawRecord[];
   executePipeline: (pipelineId: string) => ExecutionResult;
   runDemoIncident: () => Incident;
   applyCopilotFix: (incidentId: string) => void;
@@ -81,6 +91,8 @@ export const usePlatform = create<PlatformState>((set, get) => ({
   driftActive: false,
   executions: [],
   incidents: [],
+  uploads: [],
+  activeUploadId: null,
 
   addSource: (s) => set((st) => ({ sources: [s, ...st.sources] })),
   addPipeline: (p) => set((st) => ({
@@ -102,8 +114,58 @@ export const usePlatform = create<PlatformState>((set, get) => ({
 
   loadBatch: (records, label) => set({ batch: records, batchLabel: label, driftActive: false }),
 
+  registerUpload: (ds) => set((st) => ({
+
+    uploads: [ds, ...st.uploads.filter((u) => u.id !== ds.id)],
+    activeUploadId: ds.id,
+    // The uploaded rows become the rows every pipeline run processes.
+    batch: ds.rawRows,
+    batchLabel: `${ds.name} · ${ds.rowCount.toLocaleString()} rows (${ds.fileName})`,
+    driftActive: false,
+    datasets: [
+      {
+        id: ds.id,
+        name: `bronze.${ds.name}`,
+        zone: "bronze" as const,
+        warehouse: "NexusFlow Lake",
+        schema: "bronze",
+        rows: ds.rowCount,
+        sizeMb: +((ds.rowCount * ds.columnCount * 24) / 1_048_576).toFixed(2),
+        owner: "you",
+        tags: ["uploaded", "csv"],
+        columns: ds.columns.map((c) => ({
+          name: c.name,
+          type: c.type.toUpperCase(),
+          nullable: c.nullable,
+          pii: /email|phone|ssn|address|name/i.test(c.name),
+        })),
+        updatedAt: ds.uploadedAt,
+        popularity: 1,
+        description: `Ingested from ${ds.fileName} — ${ds.rowCount.toLocaleString()} rows, ${ds.columnCount} columns.`,
+      },
+      ...st.datasets.filter((d) => d.id !== ds.id),
+    ],
+  })),
+
+  setActiveUpload: (id) => set((st) => {
+    const ds = st.uploads.find((u) => u.id === id);
+    if (!ds) return {};
+    return {
+      activeUploadId: id,
+      batch: ds.rawRows,
+      batchLabel: `${ds.name} · ${ds.rowCount.toLocaleString()} rows (${ds.fileName})`,
+      driftActive: false,
+    };
+  }),
+
+  getActiveRows: () => {
+    const st = get();
+    const active = st.uploads.find((u) => u.id === st.activeUploadId);
+    return active && !st.driftActive ? active.rawRows : st.batch;
+  },
+
   executePipeline: (pipelineId) => {
-    const res = executeBatch({ pipelineId, records: get().batch, contract: ordersContract });
+    const res = executeBatch({ pipelineId, records: get().getActiveRows(), contract: ordersContract });
     set((st) => ({
       executions: [res, ...st.executions],
       runs: [executionToRun(res), ...st.runs],
