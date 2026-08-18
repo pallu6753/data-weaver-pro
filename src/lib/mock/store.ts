@@ -9,6 +9,7 @@ import { ordersContract, type RawRecord } from "@/lib/engine/contracts";
 import { applyDrift, applyRenameFix, generateOrders, ORDERS_DRIFT } from "@/lib/engine/dataset";
 import { executeBatch, type ExecutionResult } from "@/lib/engine/execution";
 import { buildIncident, type Incident } from "@/lib/engine/incident";
+import type { IngestedDataset } from "@/lib/engine/ingest";
 
 export const DEMO_PIPELINE_ID = "pl_orders_bronze_gold";
 
