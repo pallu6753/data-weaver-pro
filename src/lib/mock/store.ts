@@ -91,6 +91,8 @@ export const usePlatform = create<PlatformState>((set, get) => ({
   driftActive: false,
   executions: [],
   incidents: [],
+  uploads: [],
+  activeUploadId: null,
 
   addSource: (s) => set((st) => ({ sources: [s, ...st.sources] })),
   addPipeline: (p) => set((st) => ({
