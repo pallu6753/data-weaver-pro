@@ -20,14 +20,14 @@ const now = Date.now();
 const ago = (mins: number) => new Date(now - mins * 60_000).toISOString();
 
 export const seedSources: DataSource[] = [
-  { id: "src_pg_orders", name: "OrdersDB (Postgres)", kind: "postgres", host: "orders.internal", database: "orders", schema: "public", status: "connected", lastSyncAt: ago(6), rowsIngestedToday: 1_284_512, owner: "data-platform", env: "prod", tags: ["orders", "oltp"] },
-  { id: "src_mysql_users", name: "UsersDB (MySQL)", kind: "mysql", host: "users.internal", database: "users", status: "connected", lastSyncAt: ago(11), rowsIngestedToday: 89_120, owner: "growth", env: "prod", tags: ["users", "cdc"] },
-  { id: "src_kafka_events", name: "Clickstream (Kafka)", kind: "kafka", host: "kafka-01:9092", status: "syncing", lastSyncAt: ago(1), rowsIngestedToday: 8_942_301, owner: "analytics", env: "prod", tags: ["events", "streaming"] },
-  { id: "src_s3_logs", name: "App Logs (S3)", kind: "s3", host: "s3://nexusflow-logs", status: "connected", lastSyncAt: ago(22), rowsIngestedToday: 412_998, owner: "sre", env: "prod", tags: ["logs"] },
-  { id: "src_stripe", name: "Stripe API", kind: "rest", host: "api.stripe.com", status: "connected", lastSyncAt: ago(45), rowsIngestedToday: 12_411, owner: "finance", env: "prod", tags: ["payments"] },
-  { id: "src_mongo_catalog", name: "Product Catalog (Mongo)", kind: "mongodb", host: "mongo.internal", database: "catalog", status: "error", lastSyncAt: ago(180), rowsIngestedToday: 0, owner: "catalog", env: "prod", tags: ["products"] },
-  { id: "src_snowflake_ext", name: "Partner Snowflake", kind: "snowflake", host: "acme.snowflakecomputing.com", database: "PARTNER", status: "connected", lastSyncAt: ago(90), rowsIngestedToday: 220_444, owner: "partnerships", env: "prod", tags: ["b2b"] },
-  { id: "src_gcs_ml", name: "ML Features (GCS)", kind: "gcs", host: "gs://nexusflow-ml", status: "idle", lastSyncAt: ago(720), rowsIngestedToday: 0, owner: "ml-platform", env: "staging", tags: ["ml"] },
+  { id: "src_pg_orders", name: "Orders Database", kind: "postgres", host: "orders-database.internal", database: "orders", schema: "public", status: "connected", lastSyncAt: ago(6), rowsIngestedToday: 1_284_512, owner: "data-team", env: "prod", tags: ["database", "logs"] },
+  { id: "src_mysql_users", name: "User Database", kind: "mysql", host: "user-database.internal", database: "users", status: "connected", lastSyncAt: ago(11), rowsIngestedToday: 89_120, owner: "security", env: "prod", tags: ["auth", "login-events"] },
+  { id: "src_kafka_events", name: "API Request Data", kind: "kafka", host: "api-request-data.internal", status: "syncing", lastSyncAt: ago(1), rowsIngestedToday: 8_942_301, owner: "platform", env: "prod", tags: ["api-requests", "realtime"] },
+  { id: "src_s3_logs", name: "Server Logs Store", kind: "s3", host: "s3://server-app-logs", status: "connected", lastSyncAt: ago(22), rowsIngestedToday: 412_998, owner: "sre-ops", env: "prod", tags: ["server-logs"] },
+  { id: "src_stripe", name: "Billing API (Stripe)", kind: "rest", host: "api.stripe.com", status: "connected", lastSyncAt: ago(45), rowsIngestedToday: 12_411, owner: "finance", env: "prod", tags: ["billing", "payments"] },
+  { id: "src_mongo_catalog", name: "Product Catalog (Mongo)", kind: "mongodb", host: "catalog-db.internal", database: "catalog", status: "error", lastSyncAt: ago(180), rowsIngestedToday: 0, owner: "catalog-team", env: "prod", tags: ["products"] },
+  { id: "src_snowflake_ext", name: "Partner Database", kind: "snowflake", host: "partner.snowflakecomputing.com", database: "PARTNER", status: "connected", lastSyncAt: ago(90), rowsIngestedToday: 220_444, owner: "partnerships", env: "prod", tags: ["b2b-logs"] },
+  { id: "src_gcs_ml", name: "AI Training Data", kind: "gcs", host: "gs://ai-training-logs", status: "idle", lastSyncAt: ago(720), rowsIngestedToday: 0, owner: "ai-team", env: "staging", tags: ["ai-logs"] },
 ];
 
 const grid = (col: number, row: number) => ({ x: 60 + col * 220, y: 60 + row * 130 });
@@ -35,22 +35,22 @@ const grid = (col: number, row: number) => ({ x: 60 + col * 220, y: 60 + row * 1
 export const seedPipelines: Pipeline[] = [
   {
     id: "pl_orders_bronze_gold",
-    name: "orders → gold.orders_enriched",
-    description: "Ingests OrdersDB via CDC, joins users, applies quality rules, lands in gold.",
-    mode: "cdc", status: "healthy", owner: "data-platform", env: "prod",
+    name: "Orders → Clean Orders",
+    description: "Collects order logs, validates them using data format checks, and saves clean database results (real-time updates).",
+    mode: "cdc", status: "healthy", owner: "data-team", env: "prod",
     schedule: "*/15 * * * *", lastRunAt: ago(8), avgDurationSec: 214,
     successRate: 0.984, rowsProcessedToday: 1_284_512, costUsdToday: 42.11,
     sourceIds: ["src_pg_orders", "src_mysql_users"],
     destination: { warehouse: "Snowflake", table: "gold.orders_enriched", zone: "gold" },
-    tags: ["core", "revenue"], qualityScore: 96,
+    tags: ["core", "revenue-logs"], qualityScore: 96,
     nodes: [
-      { id: "n1", type: "source", label: "orders (CDC)", position: grid(0, 0), meta: { source: "src_pg_orders" } },
+      { id: "n1", type: "source", label: "orders (real-time)", position: grid(0, 0), meta: { source: "src_pg_orders" } },
       { id: "n2", type: "source", label: "users", position: grid(0, 1), meta: { source: "src_mysql_users" } },
-      { id: "n3", type: "quality", label: "Null & PK checks", position: grid(1, 0) },
-      { id: "n4", type: "join", label: "Join on user_id", position: grid(2, 0) },
-      { id: "n5", type: "sql", label: "Enrich + partition", position: grid(3, 0) },
+      { id: "n3", type: "quality", label: "Data format check", position: grid(1, 0) },
+      { id: "n4", type: "join", label: "Join user details", position: grid(2, 0) },
+      { id: "n5", type: "sql", label: "Structure logs", position: grid(3, 0) },
       { id: "n6", type: "destination", label: "gold.orders_enriched", position: grid(4, 0) },
-      { id: "n7", type: "notify", label: "Alert on failure", position: grid(4, 1) },
+      { id: "n7", type: "notify", label: "Slack on failure", position: grid(4, 1) },
     ],
     edges: [
       { id: "e1", source: "n1", target: "n3" }, { id: "e2", source: "n3", target: "n4" },
@@ -60,18 +60,18 @@ export const seedPipelines: Pipeline[] = [
   },
   {
     id: "pl_clickstream_stream",
-    name: "clickstream → silver.events",
-    description: "Real-time Kafka ingestion with Spark structured streaming.",
-    mode: "streaming", status: "running", owner: "analytics", env: "prod",
+    name: "API Requests → Events",
+    description: "Processes continuous data stream of incoming web API requests in real-time.",
+    mode: "streaming", status: "running", owner: "platform", env: "prod",
     schedule: "continuous", lastRunAt: ago(0), avgDurationSec: 0,
     successRate: 0.997, rowsProcessedToday: 8_942_301, costUsdToday: 88.20,
     sourceIds: ["src_kafka_events"],
     destination: { warehouse: "Delta Lake", table: "silver.events", zone: "silver" },
-    tags: ["streaming", "events"], qualityScore: 92,
+    tags: ["continuous-data", "api-logs"], qualityScore: 92,
     nodes: [
-      { id: "n1", type: "source", label: "kafka: events", position: grid(0, 0) },
-      { id: "n2", type: "spark", label: "Spark structured", position: grid(1, 0) },
-      { id: "n3", type: "quality", label: "Schema evolution", position: grid(2, 0) },
+      { id: "n1", type: "source", label: "api: request stream", position: grid(0, 0) },
+      { id: "n2", type: "spark", label: "Spark processing", position: grid(1, 0) },
+      { id: "n3", type: "quality", label: "Data format check", position: grid(2, 0) },
       { id: "n4", type: "destination", label: "silver.events", position: grid(3, 0) },
     ],
     edges: [
@@ -81,19 +81,19 @@ export const seedPipelines: Pipeline[] = [
   },
   {
     id: "pl_stripe_finance",
-    name: "stripe → gold.finance_daily",
-    description: "Hourly REST pull, dbt models, materialized to gold.",
+    name: "Billing → Daily Billing",
+    description: "Scheduled daily data formatting of transaction billing logs.",
     mode: "batch", status: "degraded", owner: "finance", env: "prod",
     schedule: "0 * * * *", lastRunAt: ago(38), avgDurationSec: 402,
     successRate: 0.912, rowsProcessedToday: 12_411, costUsdToday: 6.44,
     sourceIds: ["src_stripe"],
     destination: { warehouse: "Snowflake", table: "gold.finance_daily", zone: "gold" },
-    tags: ["finance", "dbt"], qualityScore: 81,
+    tags: ["billing", "scheduled"], qualityScore: 81,
     nodes: [
-      { id: "n1", type: "source", label: "Stripe API", position: grid(0, 0) },
-      { id: "n2", type: "python", label: "Paginate + hash", position: grid(1, 0) },
-      { id: "n3", type: "sql", label: "dbt: stg_stripe", position: grid(2, 0) },
-      { id: "n4", type: "quality", label: "Freshness + range", position: grid(3, 0) },
+      { id: "n1", type: "source", label: "Billing API", position: grid(0, 0) },
+      { id: "n2", type: "python", label: "Parse API pages", position: grid(1, 0) },
+      { id: "n3", type: "sql", label: "Data formatting", position: grid(2, 0) },
+      { id: "n4", type: "quality", label: "Amount check", position: grid(3, 0) },
       { id: "n5", type: "destination", label: "gold.finance_daily", position: grid(4, 0) },
     ],
     edges: [
@@ -103,18 +103,18 @@ export const seedPipelines: Pipeline[] = [
   },
   {
     id: "pl_catalog_sync",
-    name: "mongo.catalog → silver.products",
-    description: "Nightly product catalog sync — currently failing on schema drift.",
-    mode: "batch", status: "failed", owner: "catalog", env: "prod",
+    name: "Product Catalog → Products",
+    description: "Scheduled data collection of product database logs (currently failing due to data format changed).",
+    mode: "batch", status: "failed", owner: "catalog-team", env: "prod",
     schedule: "0 2 * * *", lastRunAt: ago(180), avgDurationSec: 612,
     successRate: 0.612, rowsProcessedToday: 0, costUsdToday: 1.10,
     sourceIds: ["src_mongo_catalog"],
     destination: { warehouse: "Delta Lake", table: "silver.products", zone: "silver" },
-    tags: ["products", "nightly"], qualityScore: 42,
+    tags: ["catalog", "scheduled"], qualityScore: 42,
     nodes: [
       { id: "n1", type: "source", label: "mongo.catalog", position: grid(0, 0) },
-      { id: "n2", type: "python", label: "Flatten nested", position: grid(1, 0) },
-      { id: "n3", type: "quality", label: "Contract check", position: grid(2, 0) },
+      { id: "n2", type: "python", label: "Flatten nesting", position: grid(1, 0) },
+      { id: "n3", type: "quality", label: "Data format check", position: grid(2, 0) },
       { id: "n4", type: "destination", label: "silver.products", position: grid(3, 0) },
     ],
     edges: [
@@ -124,18 +124,18 @@ export const seedPipelines: Pipeline[] = [
   },
   {
     id: "pl_ml_features",
-    name: "gold → feature_store.user_features",
-    description: "Rebuilds ML feature store views for the churn model.",
-    mode: "batch", status: "scheduled", owner: "ml-platform", env: "prod",
+    name: "Clean Orders → AI Features",
+    description: "Extracts daily user interaction data for machine learning analytics models.",
+    mode: "batch", status: "scheduled", owner: "ai-team", env: "prod",
     schedule: "0 4 * * *", lastRunAt: ago(1440), avgDurationSec: 890,
     successRate: 0.973, rowsProcessedToday: 0, costUsdToday: 0,
     sourceIds: ["src_snowflake_ext"],
     destination: { warehouse: "Snowflake", table: "feature_store.user_features", zone: "gold" },
-    tags: ["ml", "features"], qualityScore: 94,
+    tags: ["ai-models", "scheduled"], qualityScore: 94,
     nodes: [
       { id: "n1", type: "source", label: "gold.orders_enriched", position: grid(0, 0) },
-      { id: "n2", type: "sql", label: "Window aggregates", position: grid(1, 0) },
-      { id: "n3", type: "spark", label: "Feature transform", position: grid(2, 0) },
+      { id: "n2", type: "sql", label: "Aggregate activity", position: grid(1, 0) },
+      { id: "n3", type: "spark", label: "Feature engineering", position: grid(2, 0) },
       { id: "n4", type: "destination", label: "feature_store.user_features", position: grid(3, 0) },
     ],
     edges: [
@@ -145,17 +145,17 @@ export const seedPipelines: Pipeline[] = [
   },
   {
     id: "pl_logs_archive",
-    name: "s3.logs → archived.raw_logs",
-    description: "Compresses and archives raw logs older than 30 days.",
-    mode: "batch", status: "paused", owner: "sre", env: "prod",
+    name: "Server Logs → Archived Logs",
+    description: "Compresses and archives historic application server logs older than 30 days.",
+    mode: "batch", status: "paused", owner: "sre-ops", env: "prod",
     schedule: "0 3 * * 0", lastRunAt: ago(5400), avgDurationSec: 1400,
     successRate: 0.999, rowsProcessedToday: 0, costUsdToday: 0,
     sourceIds: ["src_s3_logs"],
     destination: { warehouse: "Delta Lake", table: "archived.raw_logs", zone: "archived" },
-    tags: ["ops", "archive"], qualityScore: 88,
+    tags: ["ops", "maintenance"], qualityScore: 88,
     nodes: [
-      { id: "n1", type: "source", label: "s3://logs", position: grid(0, 0) },
-      { id: "n2", type: "python", label: "Compress + hash", position: grid(1, 0) },
+      { id: "n1", type: "source", label: "s3://app-logs", position: grid(0, 0) },
+      { id: "n2", type: "python", label: "Gzip compression", position: grid(1, 0) },
       { id: "n3", type: "destination", label: "archived.raw_logs", position: grid(2, 0) },
     ],
     edges: [
@@ -185,31 +185,31 @@ export const seedLogs: LogLine[] = seedRuns.slice(0, 24).flatMap((r) => {
   const p = seedPipelines.find((x) => x.id === r.pipelineId)!;
   const base = new Date(r.startedAt).getTime();
   const lines: LogLine[] = [
-    { id: `${r.id}_l1`, runId: r.id, pipelineId: r.pipelineId, ts: new Date(base).toISOString(), level: "info", message: `Run started (${r.triggeredBy})`, node: p.nodes[0]?.label },
-    { id: `${r.id}_l2`, runId: r.id, pipelineId: r.pipelineId, ts: new Date(base + 4000).toISOString(), level: "info", message: `Read ${r.rows.toLocaleString()} rows from ${p.nodes[0]?.label}` },
-    { id: `${r.id}_l3`, runId: r.id, pipelineId: r.pipelineId, ts: new Date(base + 12000).toISOString(), level: "debug", message: `Applied ${p.nodes.length - 2} transformations` },
+    { id: `${r.id}_l1`, runId: r.id, pipelineId: r.pipelineId, ts: new Date(base).toISOString(), level: "info", message: `Pipeline job started via ${r.triggeredBy}`, node: p.nodes[0]?.label },
+    { id: `${r.id}_l2`, runId: r.id, pipelineId: r.pipelineId, ts: new Date(base + 4000).toISOString(), level: "info", message: `Successfully read ${r.rows.toLocaleString()} log entries from ${p.nodes[0]?.label}` },
+    { id: `${r.id}_l3`, runId: r.id, pipelineId: r.pipelineId, ts: new Date(base + 12000).toISOString(), level: "debug", message: `Executed ${p.nodes.length - 2} transformation stages` },
   ];
   if (r.status === "failed") {
-    lines.push({ id: `${r.id}_l4`, runId: r.id, pipelineId: r.pipelineId, ts: new Date(base + 22000).toISOString(), level: "error", message: `Schema drift detected on column 'price_v2' — expected DECIMAL(10,2), got STRING`, node: "Contract check" });
+    lines.push({ id: `${r.id}_l4`, runId: r.id, pipelineId: r.pipelineId, ts: new Date(base + 22000).toISOString(), level: "error", message: `Data format changed: total amount field has a different name.`, node: "Data format check" });
   } else {
-    lines.push({ id: `${r.id}_l4`, runId: r.id, pipelineId: r.pipelineId, ts: new Date(base + r.durationSec * 1000).toISOString(), level: "info", message: `Wrote ${r.rows.toLocaleString()} rows to ${p.destination.table} in ${r.durationSec}s` });
+    lines.push({ id: `${r.id}_l4`, runId: r.id, pipelineId: r.pipelineId, ts: new Date(base + r.durationSec * 1000).toISOString(), level: "info", message: `Successfully wrote ${r.rows.toLocaleString()} records to ${p.destination.table} in ${r.durationSec}s` });
   }
   return lines;
 });
 
 export const seedAlerts: Alert[] = [
-  { id: "al_1", ts: ago(12), severity: "critical", title: "Pipeline failed: mongo.catalog → silver.products", detail: "Contract validation failed on column price_v2 (schema drift).", pipelineId: "pl_catalog_sync", ack: false, channel: "slack" },
-  { id: "al_2", ts: ago(38), severity: "high", title: "Elevated failure rate: stripe → gold.finance_daily", detail: "Success rate dropped to 91.2% over last 24h.", pipelineId: "pl_stripe_finance", ack: false, channel: "pagerduty" },
-  { id: "al_3", ts: ago(120), severity: "medium", title: "Freshness SLA breached: gold.orders_enriched", detail: "Lag reached 27m (SLA 15m). Auto-recovered.", pipelineId: "pl_orders_bronze_gold", ack: true, channel: "slack" },
-  { id: "al_4", ts: ago(240), severity: "low", title: "Cost spike: clickstream stream", detail: "Hourly cost +38% vs 7d avg — investigate partitioning.", pipelineId: "pl_clickstream_stream", ack: false, channel: "email" },
-  { id: "al_5", ts: ago(1440), severity: "info", title: "Weekly report ready", detail: "Data quality report for W48 is available.", ack: true, channel: "email" },
+  { id: "al_1", ts: ago(12), severity: "critical", title: "Pipeline failure: Product Catalog → Products", detail: "Data format check failed: total amount field has a different name.", pipelineId: "pl_catalog_sync", ack: false, channel: "slack" },
+  { id: "al_2", ts: ago(38), severity: "high", title: "Elevated error rate: Billing → Daily Billing", detail: "Pipeline success rate dropped to 91.2% in the last 24 hours.", pipelineId: "pl_stripe_finance", ack: false, channel: "pagerduty" },
+  { id: "al_3", ts: ago(120), severity: "medium", title: "Freshness delay: Orders → Clean Orders", detail: "Data collection delay reached 27 minutes (target SLA is under 15 minutes). Auto-recovered.", pipelineId: "pl_orders_bronze_gold", ack: true, channel: "slack" },
+  { id: "al_4", ts: ago(240), severity: "low", title: "Cost alert: API Requests → Events", detail: "Hourly computation costs increased by 38% compared to average baseline.", pipelineId: "pl_clickstream_stream", ack: false, channel: "email" },
+  { id: "al_5", ts: ago(1440), severity: "info", title: "Weekly Pipeline Report", detail: "Weekly log pipeline performance and metrics report is ready.", ack: true, channel: "email" },
 ];
 
 export const seedDatasets: Dataset[] = [
   {
     id: "ds_gold_orders", name: "gold.orders_enriched", zone: "gold", warehouse: "Snowflake", schema: "gold",
-    rows: 48_211_003, sizeMb: 4210, owner: "data-platform", tags: ["revenue", "certified"], popularity: 96,
-    description: "Enriched orders with customer + product metadata. Source of truth for revenue.",
+    rows: 48_211_003, sizeMb: 4210, owner: "data-team", tags: ["billing-logs", "clean"], popularity: 96,
+    description: "Validated transactions joined with customer profiles. Cleaned and certified.",
     updatedAt: ago(8),
     columns: [
       { name: "order_id", type: "STRING", nullable: false },
@@ -221,8 +221,8 @@ export const seedDatasets: Dataset[] = [
   },
   {
     id: "ds_silver_events", name: "silver.events", zone: "silver", warehouse: "Delta Lake", schema: "silver",
-    rows: 2_311_090_812, sizeMb: 82_400, owner: "analytics", tags: ["events", "hot"], popularity: 88,
-    description: "Cleaned clickstream events, deduped and partitioned by day.",
+    rows: 2_311_090_812, sizeMb: 82_400, owner: "platform", tags: ["api-logs", "realtime"], popularity: 88,
+    description: "Normalized web API request event records, partitioned daily.",
     updatedAt: ago(0),
     columns: [
       { name: "event_id", type: "STRING", nullable: false },
@@ -234,8 +234,8 @@ export const seedDatasets: Dataset[] = [
   },
   {
     id: "ds_silver_products", name: "silver.products", zone: "silver", warehouse: "Delta Lake", schema: "silver",
-    rows: 128_412, sizeMb: 92, owner: "catalog", tags: ["products", "stale"], popularity: 61,
-    description: "Product catalog flattened from Mongo. Currently stale — see alert.",
+    rows: 128_412, sizeMb: 92, owner: "catalog-team", tags: ["products", "stale"], popularity: 61,
+    description: "Product details imported from MongoDB database. Currently stale due to failed job.",
     updatedAt: ago(180),
     columns: [
       { name: "sku", type: "STRING", nullable: false },
@@ -246,8 +246,8 @@ export const seedDatasets: Dataset[] = [
   },
   {
     id: "ds_feature_user", name: "feature_store.user_features", zone: "gold", warehouse: "Snowflake", schema: "feature_store",
-    rows: 12_100_982, sizeMb: 1820, owner: "ml-platform", tags: ["ml", "features"], popularity: 79,
-    description: "Per-user aggregated features for churn model v3.",
+    rows: 12_100_982, sizeMb: 1820, owner: "ai-team", tags: ["ai-models", "analytics"], popularity: 79,
+    description: "Aggregated user activity indicators compiled for churn prediction models.",
     updatedAt: ago(1440),
     columns: [
       { name: "user_id", type: "STRING", nullable: false, pii: true },
@@ -263,8 +263,8 @@ export const seedLineage: { nodes: LineageNode[]; edges: LineageEdge[] } = {
     ...seedSources.map((s) => ({ id: s.id, label: s.name, kind: "source" as const })),
     ...seedPipelines.map((p) => ({ id: p.id, label: p.name, kind: "pipeline" as const })),
     ...seedDatasets.map((d) => ({ id: d.id, label: d.name, kind: "dataset" as const, zone: d.zone })),
-    { id: "dash_revenue", label: "Executive Revenue Dashboard", kind: "dashboard" },
-    { id: "dash_ml", label: "Churn Model v3", kind: "dashboard" },
+    { id: "dash_revenue", label: "Business Dashboard", kind: "dashboard" },
+    { id: "dash_ml", label: "AI Analytics Dashboard", kind: "dashboard" },
   ],
   edges: [
     ...seedPipelines.flatMap((p) => p.sourceIds.map((s) => ({ source: s, target: p.id }))),

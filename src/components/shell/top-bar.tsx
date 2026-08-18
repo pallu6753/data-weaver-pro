@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Search, Command as CmdIcon, Bell, User } from "lucide-react";
+import { Search, Command as CmdIcon, Bell, User, LogOut } from "lucide-react";
+import { toast } from "sonner";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,10 @@ import {
   CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator,
 } from "@/components/ui/command";
 import { usePlatform } from "@/lib/mock/store";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { supabase } from "@/integrations/supabase/client";
 
 export function TopBar() {
   const [open, setOpen] = useState(false);
@@ -54,13 +59,30 @@ export function TopBar() {
             </span>
           )}
         </Button>
-        <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/50 px-2 py-1">
-          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[image:var(--gradient-brand)] text-[10px] font-bold text-white">DA</div>
-          <div className="hidden text-xs leading-tight md:block">
-            <div className="font-medium">Demo Admin</div>
-            <div className="text-muted-foreground">Platform Owner</div>
-          </div>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-2 rounded-full border border-border/60 bg-background/50 px-2 py-1 transition hover:bg-background/80 focus:outline-none">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[image:var(--gradient-brand)] text-[10px] font-bold text-white">DA</div>
+              <div className="hidden text-xs leading-tight md:block text-left">
+                <div className="font-medium text-foreground">Demo Admin</div>
+                <div className="text-muted-foreground">Platform Owner</div>
+              </div>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="glass-strong min-w-[200px]">
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={async () => {
+              localStorage.removeItem("nexusflow_mock_session");
+              await supabase.auth.signOut();
+              toast.success("Logged out successfully");
+              navigate({ to: "/login" });
+            }} className="text-[color:var(--destructive)] focus:text-[color:var(--destructive)] cursor-pointer">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log Out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <CommandDialog open={open} onOpenChange={setOpen}>

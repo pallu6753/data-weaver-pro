@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet, Link, createRootRouteWithContext, useRouter, HeadContent, Scripts,
+  Outlet, Link, createRootRouteWithContext, useRouter, useRouterState, HeadContent, Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -85,23 +86,92 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+  const state = useRouterState();
+  const isLoginPage = state.location.pathname === "/login";
+  const [session, setSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check initial session (with fallback support)
+    const mock = typeof window !== "undefined" ? localStorage.getItem("nexusflow_mock_session") : null;
+    if (mock) {
+      setSession(JSON.parse(mock));
+      setLoading(false);
+    } else {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        setLoading(false);
+        if (!session && !isLoginPage) {
+          router.navigate({ to: "/login" });
+        }
+      });
+    }
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setSession(session);
+      } else {
+        const mockFallback = typeof window !== "undefined" ? localStorage.getItem("nexusflow_mock_session") : null;
+        if (mockFallback) {
+          setSession(JSON.parse(mockFallback));
+        } else {
+          setSession(null);
+          if (!isLoginPage) {
+            router.navigate({ to: "/login" });
+          }
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [isLoginPage, router]);
+
+  useEffect(() => {
+    if (session && isLoginPage) {
+      router.navigate({ to: "/" });
+    }
+  }, [session, isLoginPage, router]);
+
+  if (loading && !isLoginPage) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-background px-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground font-medium animate-pulse">Verifying credentials...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SidebarProvider>
-        <div className="flex min-h-dvh w-full">
-          <AppSidebar />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <TopBar />
-            <main className="flex-1">
-              <Outlet />
-            </main>
-          </div>
+      {isLoginPage ? (
+        <div className="min-h-dvh w-full">
+          <Outlet />
+          <Toaster />
         </div>
-        <Toaster />
-      </SidebarProvider>
+      ) : (
+        <SidebarProvider>
+          <div className="flex min-h-dvh w-full">
+            <AppSidebar />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <TopBar />
+              <main className="flex-1">
+                <Outlet />
+              </main>
+            </div>
+          </div>
+          <Toaster />
+        </SidebarProvider>
+      )}
     </QueryClientProvider>
   );
 }
