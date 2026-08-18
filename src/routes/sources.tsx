@@ -121,6 +121,10 @@ function SourcesPage() {
         }
       />
 
+      <CsvUploadCard />
+
+
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {sources.map((s) => (
           <Card key={s.id} className="glass border-border/60 transition hover:border-primary/50">
