@@ -114,7 +114,7 @@ export const usePlatform = create<PlatformState>((set, get) => ({
 
   loadBatch: (records, label) => set({ batch: records, batchLabel: label, driftActive: false }),
 
-
+  registerUpload: (ds) => set((st) => ({
 
     uploads: [ds, ...st.uploads.filter((u) => u.id !== ds.id)],
     activeUploadId: ds.id,
