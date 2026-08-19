@@ -16,12 +16,10 @@ export const Route = createFileRoute("/copilot")({
 interface Msg { role: "user" | "assistant"; content: string; }
 
 const suggestions = [
-  "Why did the catalog pipeline fail?",
-  "Optimize my Spark clickstream job",
-  "Generate SQL: daily revenue by category",
-  "Find pipelines above $50/day cost",
-  "Suggest partitioning for gold.orders_enriched",
-  "Create a dbt model for user retention",
+  "What is a data pipeline?",
+  "Why did my pipeline fail?",
+  "Show recent errors",
+  "How can I improve data quality?",
 ];
 
 function CopilotPage() {
@@ -39,26 +37,43 @@ function CopilotPage() {
 
   const answer = (q: string): string => {
     const low = q.toLowerCase();
-    if (/fail|why|error|drift/.test(low)) {
+    
+    if (/fail|why|error|drift/.test(low) && !/recent/.test(low)) {
       const failing = pipelines.find((p) => p.status === "failed");
       const a = alerts.find((x) => x.pipelineId === failing?.id);
-      return `**Root cause — ${failing?.name}**\n\n- Contract validation failed on \`price_v2\` (schema drift): DECIMAL(10,2) → STRING.\n- Started 3 hours ago at the "Contract check" node. All downstream nodes were skipped.\n- Impact: \`silver.products\` is stale (${datasets.find((d) => d.name.includes("products"))?.rows.toLocaleString()} rows, ~3h behind SLA). Blocks the ML feature build.\n\n**Recommended fix:**\n1. Update the data contract to accept nullable STRING for price_v2 during migration.\n2. Add a coercion transform \`TRY_CAST(price_v2 AS DECIMAL(10,2))\` before the destination.\n3. Backfill the last 3 hours with the fixed pipeline (est. ${failing?.avgDurationSec}s).\n\nConfidence: 92%. Linked alert: ${a?.id}.`;
+      return `**Root cause — ${failing?.name || "Product Catalog → Products"}**\n\n- Data format check failed: total amount field has a different name.\n- Node: "Data format check". Downstream steps were skipped.\n- Impact: Dataset is stale. Blocks AI analytics features.\n\n**Recommended fix:**\n1. Map the renamed column \`order_total\` back and cast to DECIMAL.\n2. Replay quarantined records.\n\nConfidence: 95%. Linked alert: ${a?.id || "al_1"}.`;
     }
+    
+    if (/what is a data pipeline|what is pipeline|pipeline/.test(low)) {
+      return `**What is a Data Pipeline?**\n\nA data pipeline is a series of automated software steps that move data from a source (like databases or APIs) to a destination (like data warehouses or data lakes). \n\nAlong the way, the data is collected, formatted, cleaned, and verified to ensure it is structured and ready for dashboards, metrics, and AI models.`;
+    }
+
+    if (/errors|recent/.test(low)) {
+      return `**Recent pipeline errors:**\n\n1. **Product Catalog → Products**\n   - *Error:* Data format changed: total amount field has a different name.\n   - *Severity:* Critical\n   - *Occurred:* 12m ago\n\n2. **Billing → Daily Billing**\n   - *Error:* Pipeline success rate dropped to 91.2% in the last 24 hours.\n   - *Severity:* High\n   - *Occurred:* 38m ago`;
+    }
+
+    if (/quality/.test(low)) {
+      return `**How to Improve Data Quality in NexusFlow:**\n\n1. **Define Schema Contracts**: Enforce rigid types (like DECIMAL, TIMESTAMP) on your datasets.\n2. **Add Validation Checks**: Enable Null checks and Primary Key verification blocks in your pipeline graphs.\n3. **Set Up Alerts**: Configure Slack or PagerDuty alerts to quickly capture anomalies.\n4. **Review Incidents**: Resolve incidents early by debugging error logs and deploying Copilot-suggested column-mapping remedies.`;
+    }
+
+    if (/kafka/.test(low)) {
+      return `**What is Apache Kafka?**\n\nApache Kafka is a highly scalable messaging engine designed to capture and distribute continuous data stream logs (like real-time user clickstreams or API requests) in real time.\n\nIn NexusFlow, it acts as the streaming API request ingestion source.`;
+    }
+
+    if (/troubleshoot/.test(low)) {
+      return `**Troubleshooting Pipeline Errors**\n\nTo debug pipeline failures in NexusFlow:\n1. Open the **Incidents** tab to see active alerts.\n2. Inspect the **Logs** tab for specific validation error messages.\n3. Use the **AI Copilot** one-click remediation to generate a mapping fix.\n4. Replay quarantined records to process them without database loss.`;
+    }
+
     if (/optim|spark|cost|partition/.test(low)) {
       const p = pipelines.find((x) => x.mode === "streaming")!;
-      return `**Optimizing \`${p.name}\`**\n\nCurrent: ${p.rowsProcessedToday.toLocaleString()} rows/day at $${p.costUsdToday}/day.\n\nRecommendations:\n1. Repartition by \`event_type\` (currently by \`event_id\`) — reduces shuffle by ~40%.\n2. Enable adaptive query execution and skew join optimization.\n3. Increase micro-batch to 30s where SLA allows (–22% executor time).\n4. Compact silver.events daily; small-file count is trending up.\n\nProjected saving: **~$21/day (–24%)**.`;
+      return `**Optimizing \`${p.name}\`**\n\nCurrent: ${p.rowsProcessedToday.toLocaleString()} rows/day at $${p.costUsdToday}/day.\n\nRecommendations:\n1. Repartition by event logs keys to reduce shuffle.\n2. Compact daily files to reduce small-file index overhead.\n\nProjected saving: **~$21/day (–24%)**.`;
     }
+    
     if (/sql|query|generate/.test(low)) {
-      return "```sql\n-- Daily revenue by product category\nSELECT\n  DATE_TRUNC('day', o.created_at)     AS day,\n  p.category,\n  SUM(o.total_usd)                    AS revenue_usd,\n  COUNT(DISTINCT o.user_id)           AS unique_buyers\nFROM gold.orders_enriched o\nLEFT JOIN silver.products p USING (sku)\nWHERE o.created_at >= CURRENT_DATE - INTERVAL '30 days'\nGROUP BY 1, 2\nORDER BY 1 DESC, revenue_usd DESC;\n```\n\nUses your `gold.orders_enriched` (certified) joined with `silver.products`. Est. runtime: 4.2s on Snowflake MEDIUM.";
+      return "```sql\n-- Daily transactions by user\nSELECT\n  DATE_TRUNC('day', created_at) AS day,\n  COUNT(*)                      AS count,\n  SUM(total_usd)                AS total\nFROM gold.orders_enriched\nGROUP BY 1\nORDER BY 1 DESC;\n```";
     }
-    if (/dbt|model/.test(low)) {
-      return "```sql\n-- models/marts/user_retention.sql\n{{ config(materialized='incremental', unique_key='user_id') }}\n\nWITH orders AS (\n  SELECT user_id, MIN(created_at) AS first_order, MAX(created_at) AS last_order,\n         COUNT(*) AS lifetime_orders, SUM(total_usd) AS lifetime_revenue\n  FROM {{ ref('gold_orders_enriched') }}\n  GROUP BY user_id\n)\nSELECT *,\n  DATE_DIFF('day', first_order, last_order) AS lifespan_days,\n  CASE WHEN last_order > CURRENT_DATE - 30 THEN 'active' ELSE 'churned' END AS status\nFROM orders;\n```";
-    }
-    if (/cost|expensive/.test(low)) {
-      const top = [...pipelines].sort((a, b) => b.costUsdToday - a.costUsdToday).slice(0, 3);
-      return `**Top-cost pipelines today:**\n\n${top.map((p, i) => `${i + 1}. \`${p.name}\` — $${p.costUsdToday.toFixed(2)} (${p.mode})`).join("\n")}\n\nCombined: $${top.reduce((a, p) => a + p.costUsdToday, 0).toFixed(2)}. Consider streaming compaction and warehouse right-sizing.`;
-    }
-    return `I found **${pipelines.length} pipelines** across ${new Set(pipelines.map((p) => p.env)).size} environments. Try one of the suggested prompts, or ask about a specific pipeline by name.`;
+
+    return `I found **${pipelines.length} active pipelines** across the platform. Try asking about "What is a data pipeline?", "What is Kafka?", "Why did my pipeline fail?", or click one of the suggestion prompts!`;
   };
 
   const send = (q: string) => {
@@ -72,22 +87,22 @@ function CopilotPage() {
     let i = 0;
     setMsgs((m) => [...m, { role: "assistant", content: "" }]);
     const iv = setInterval(() => {
-      i += Math.max(2, Math.floor(full.length / 60));
+      i += Math.max(3, Math.floor(full.length / 50));
       setMsgs((m) => {
         const copy = [...m];
         copy[copy.length - 1] = { role: "assistant", content: full.slice(0, i) };
         return copy;
       });
       if (i >= full.length) { clearInterval(iv); setStreaming(false); }
-    }, 25);
+    }, 20);
   };
 
   return (
     <div className="mx-auto flex h-[calc(100dvh-56px)] max-w-5xl flex-col p-6 lg:p-8">
       <PageHeader
         eyebrow="Intelligence"
-        title="AI Copilot"
-        description="Grounded on your live pipelines, sources, runs, and alerts."
+        title="NexusFlow AI Copilot"
+        description="Your beginner-friendly AI assistant to learn about data pipelines, monitor execution logs, check alerts, and troubleshoot errors."
       />
 
       <Card className="glass mt-6 flex min-h-0 flex-1 flex-col border-border/60">
