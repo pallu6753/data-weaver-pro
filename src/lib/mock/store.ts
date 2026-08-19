@@ -5,11 +5,11 @@ import {
 import type {
   Alert, DataSource, Dataset, LineageEdge, LineageNode, LogLine, Pipeline, PipelineRun,
 } from "./types";
-import { ordersContract, type RawRecord } from "@/lib/engine/contracts";
+import { ordersContract, type DataContract, type RawRecord } from "@/lib/engine/contracts";
 import { applyDrift, applyRenameFix, generateOrders, ORDERS_DRIFT } from "@/lib/engine/dataset";
 import { executeBatch, type ExecutionResult } from "@/lib/engine/execution";
 import { buildIncident, type Incident } from "@/lib/engine/incident";
-import type { IngestedDataset } from "@/lib/engine/ingest";
+import { contractFromDataset, type IngestedDataset } from "@/lib/engine/ingest";
 
 export const DEMO_PIPELINE_ID = "pl_orders_bronze_gold";
 
@@ -55,6 +55,8 @@ interface PlatformState {
   setActiveUpload: (id: string) => void;
   /** Rows a pipeline should process: the active upload, else the generated batch. */
   getActiveRows: () => RawRecord[];
+  /** Contract for the active data: the uploaded dataset's own schema, else orders.raw. */
+  getActiveContract: () => DataContract;
   executePipeline: (pipelineId: string) => ExecutionResult;
   runDemoIncident: () => Incident;
   applyCopilotFix: (incidentId: string) => void;
@@ -175,8 +177,14 @@ export const usePlatform = create<PlatformState>((set, get) => ({
     return active && !st.driftActive ? active.rawRows : st.batch;
   },
 
+  getActiveContract: () => {
+    const st = get();
+    const active = st.uploads.find((u) => u.id === st.activeUploadId);
+    return active && !st.driftActive ? contractFromDataset(active) : ordersContract;
+  },
+
   executePipeline: (pipelineId) => {
-    const res = executeBatch({ pipelineId, records: get().getActiveRows(), contract: ordersContract });
+    const res = executeBatch({ pipelineId, records: get().getActiveRows(), contract: get().getActiveContract() });
     set((st) => ({
       executions: [res, ...st.executions],
       runs: [executionToRun(res), ...st.runs],
@@ -242,7 +250,7 @@ export const usePlatform = create<PlatformState>((set, get) => ({
     const res = executeBatch({
       pipelineId: incident.pipelineId,
       records: incident.fixApplied ? st.batch : applyRenameFix(st.batch),
-      contract: ordersContract,
+      contract: st.getActiveContract(),
       runId: `replay_${incident.runId}`,
     });
     const recovered = res.validation.passed;
