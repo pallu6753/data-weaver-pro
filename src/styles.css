@@ -4,6 +4,85 @@
 
 @custom-variant dark (&:is(.dark *));
 
+:root {
+  --radius: 0.5rem;
+
+  /* Main */
+  --background: #F8FAFC;
+  --foreground: #1F2937;
+
+  /* Cards */
+  --card: #FFFFFF;
+  --card-foreground: #1F2937;
+
+  /* Popovers */
+  --popover: #FFFFFF;
+  --popover-foreground: #1F2937;
+
+  /* Primary */
+  --primary: #4F6D8A;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary */
+  --secondary: #F1F5F9;
+  --secondary-foreground: #374151;
+
+  /* Muted */
+  --muted: #F3F4F6;
+  --muted-foreground: #6B7280;
+
+  /* Accent */
+  --accent: #EAF0F6;
+  --accent-foreground: #4F6D8A;
+
+  /* Status */
+  --destructive: #C96B6B;
+  --destructive-foreground: #FFFFFF;
+
+  --success: #5F9E7A;
+  --success-foreground: #FFFFFF;
+
+  --warning: #C49A4A;
+  --warning-foreground: #FFFFFF;
+
+  --info: #6B8FB3;
+  --info-foreground: #FFFFFF;
+
+  /* Borders */
+  --border: #E5E7EB;
+  --input: #D1D5DB;
+  --ring: #9AAFC2;
+
+  /* Charts */
+  --chart-1: #6B8FB3;
+  --chart-2: #7FA6A0;
+  --chart-3: #9AA3AD;
+  --chart-4: #C49A4A;
+  --chart-5: #C96B6B;
+
+  /* Sidebar */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #374151;
+  --sidebar-primary: #4F6D8A;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F1F5F9;
+  --sidebar-accent-foreground: #1F2937;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #9AAFC2;
+
+  /* Remove decorative gradients */
+  --gradient-primary: #4F6D8A;
+  --gradient-brand: #4F6D8A;
+  --gradient-accent: #EAF0F6;
+  --gradient-success: #EAF5EE;
+  --gradient-danger: #FBECEC;
+  --gradient-mesh: none;
+
+  /* Subtle shadow */
+  --shadow-glow: none;
+  --shadow-elevated: 0 2px 8px rgba(31, 41, 55, 0.06);
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -55,77 +134,6 @@
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
-/* NexusFlow — enterprise dark theme with electric blue/purple/cyan gradients */
-:root {
-  --radius: 0.75rem;
-
-  --background: oklch(0.16 0.03 265);
-  --foreground: oklch(0.97 0.01 250);
-
-  --card: oklch(0.20 0.035 265);
-  --card-foreground: oklch(0.97 0.01 250);
-
-  --popover: oklch(0.19 0.035 265);
-  --popover-foreground: oklch(0.97 0.01 250);
-
-  --primary: oklch(0.68 0.20 265);
-  --primary-foreground: oklch(0.98 0.005 250);
-
-  --secondary: oklch(0.26 0.04 265);
-  --secondary-foreground: oklch(0.95 0.01 250);
-
-  --muted: oklch(0.24 0.03 265);
-  --muted-foreground: oklch(0.68 0.03 260);
-
-  --accent: oklch(0.75 0.17 200);
-  --accent-foreground: oklch(0.15 0.02 265);
-
-  --destructive: oklch(0.65 0.25 25);
-  --destructive-foreground: oklch(0.98 0.005 250);
-
-  --success: oklch(0.70 0.17 155);
-  --success-foreground: oklch(0.15 0.02 265);
-
-  --warning: oklch(0.78 0.16 75);
-  --warning-foreground: oklch(0.15 0.02 265);
-
-  --info: oklch(0.72 0.15 240);
-  --info-foreground: oklch(0.15 0.02 265);
-
-  --border: oklch(0.32 0.04 265 / 0.6);
-  --input: oklch(0.28 0.04 265);
-  --ring: oklch(0.68 0.20 265);
-
-  --chart-1: oklch(0.70 0.22 265);   /* blue */
-  --chart-2: oklch(0.72 0.20 300);   /* purple */
-  --chart-3: oklch(0.78 0.16 195);   /* cyan */
-  --chart-4: oklch(0.75 0.18 155);   /* teal */
-  --chart-5: oklch(0.78 0.16 75);    /* amber */
-
-  --sidebar: oklch(0.14 0.03 265);
-  --sidebar-foreground: oklch(0.90 0.02 250);
-  --sidebar-primary: oklch(0.68 0.20 265);
-  --sidebar-primary-foreground: oklch(0.98 0.005 250);
-  --sidebar-accent: oklch(0.22 0.035 265);
-  --sidebar-accent-foreground: oklch(0.97 0.01 250);
-  --sidebar-border: oklch(0.28 0.04 265 / 0.6);
-  --sidebar-ring: oklch(0.68 0.20 265);
-
-  /* Brand gradients */
-  --gradient-primary: linear-gradient(135deg, oklch(0.65 0.22 265), oklch(0.70 0.20 300));
-  --gradient-brand: linear-gradient(135deg, oklch(0.65 0.22 265) 0%, oklch(0.70 0.20 300) 50%, oklch(0.78 0.18 200) 100%);
-  --gradient-accent: linear-gradient(135deg, oklch(0.78 0.16 195), oklch(0.70 0.20 265));
-  --gradient-success: linear-gradient(135deg, oklch(0.70 0.17 155), oklch(0.78 0.16 195));
-  --gradient-danger: linear-gradient(135deg, oklch(0.65 0.25 25), oklch(0.70 0.22 340));
-  --gradient-mesh:
-    radial-gradient(at 20% 20%, oklch(0.30 0.15 265 / 0.35) 0px, transparent 50%),
-    radial-gradient(at 80% 10%, oklch(0.30 0.18 300 / 0.30) 0px, transparent 55%),
-    radial-gradient(at 60% 85%, oklch(0.30 0.15 200 / 0.30) 0px, transparent 55%);
-
-  --shadow-glow: 0 0 40px oklch(0.65 0.22 265 / 0.35);
-  --shadow-elevated: 0 20px 60px -20px oklch(0.05 0.05 265 / 0.6);
-}
-
 .dark {
   color-scheme: dark;
 }
@@ -137,17 +145,14 @@
 
   html,
   body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-  }
+  background-color: var(--color-background);
+  min-height: 100dvh;
+}
 
   body {
-    background-image: var(--gradient-mesh);
-    background-attachment: fixed;
-    min-height: 100dvh;
-  }
+  background-color: var(--color-background);
+  min-height: 100dvh;
+}
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
@@ -156,32 +161,27 @@
 }
 
 @utility glass {
-  background: color-mix(in oklab, var(--card) 55%, transparent);
-  backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  background: var(--card);
+  border: 1px solid var(--border);
 }
 
 @utility glass-strong {
-  background: color-mix(in oklab, var(--card) 80%, transparent);
-  backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid color-mix(in oklab, var(--border) 90%, transparent);
+  background: var(--card);
+  border: 1px solid var(--border);
 }
 
 @utility gradient-text {
-  background: var(--gradient-brand);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--primary);
 }
 
 @utility gradient-border {
   position: relative;
   background: var(--card);
-  background-clip: padding-box;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
 }
+
 @utility ring-glow {
-  box-shadow: var(--shadow-glow);
+  box-shadow: none;
 }
 
 @keyframes pulse-dot {
@@ -195,4 +195,18 @@
 @keyframes shimmer {
   0% { background-position: -1000px 0; }
   100% { background-position: 1000px 0; }
+}
+/* Fix text visibility for light theme */
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    color: #17324D;
+  }
+
+  p {
+    color: #5B7083;
+  }
+
+  body {
+    color: #17324D;
+  }
 }
