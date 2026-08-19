@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
-  Plus, Database, HardDrive, Cloud, Waves, Code2, FileText, Server,
+  Plus, Database, HardDrive, Cloud, Waves, Code2, FileText, Server, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { CsvUploadCard } from "@/components/csv-upload-card";
+import { DataInsightCard } from "@/components/data-insight-card";
 import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -178,6 +179,8 @@ function SourcesPage() {
       />
 
       <CsvUploadCard />
+
+      <DataInsightCard />
 
 
 
