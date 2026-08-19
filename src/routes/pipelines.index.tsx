@@ -90,7 +90,7 @@ function PipelinesIndex() {
                 <span>Last run {formatDistanceToNow(new Date(p.lastRunAt), { addSuffix: true })}</span>
                 <Button variant="ghost" size="sm" onClick={(e) => {
                   e.preventDefault();
-                  triggerRun(p.id);
+                  void triggerRun(p.id).catch(() => undefined);
                   toast.success(`Triggered ${p.name}`, { description: "Run queued and executing…" });
                 }}>
                   <Play className="h-3 w-3" /> Run

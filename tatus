@@ -1,0 +1,13 @@
+warning: in the working copy of 'src/lib/engine/execution.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/mock/store.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/routeTree.gen.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/routes/pipelines.$id.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/routes/pipelines.index.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/routes/sources.tsx', LF will be replaced by CRLF the next time Git touches it
+ src/lib/engine/execution.ts    | 132 [32m+++++++++++++++++++++++++[m[31m-[m
+ src/lib/mock/store.ts          | 167 [32m+++++++++++++++++++++++++++++[m[31m----[m
+ src/routeTree.gen.ts           | 206 [32m++++++++++++++++++++[m[31m---------------------[m
+ src/routes/pipelines.$id.tsx   |  65 [32m++[m[31m-----------[m
+ src/routes/pipelines.index.tsx |   2 [32m+[m[31m-[m
+ src/routes/sources.tsx         |  29 [32m++++++[m
+ 6 files changed, 422 insertions(+), 179 deletions(-)
