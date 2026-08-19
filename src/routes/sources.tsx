@@ -154,26 +154,7 @@ function SourcesPage() {
         ))}
       </div>
 
-      <Card className="glass border-border/60">
-        <CardHeader><CardTitle className="text-base">Available connectors</CardTitle></CardHeader>
-        <CardContent>
-          {groups.map((g) => (
-            <div key={g} className="mb-4 last:mb-0">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{g}</div>
-              <div className="flex flex-wrap gap-2">
-                {CONNECTORS.filter((c) => c.group === g).map((c) => {
-                  const Icon = c.icon;
-                  return (
-                    <div key={c.id} className="flex items-center gap-2 rounded-lg border border-border/40 bg-background/40 px-3 py-1.5 text-xs">
-                      <Icon className="h-3.5 w-3.5 text-primary" />{c.label}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <ConnectorCarousel />
     </div>
   );
 }
