@@ -9,16 +9,28 @@ import { ordersContract, type DataContract, type RawRecord } from "@/lib/engine/
 import { applyDrift, applyRenameFix, generateOrders, ORDERS_DRIFT } from "@/lib/engine/dataset";
 import { executeBatch, executeConfiguredPipeline, type ExecutionEvent, type ExecutionResult } from "@/lib/engine/execution";
 import { buildIncident, type Incident } from "@/lib/engine/incident";
-import type { IngestedDataset } from "@/lib/engine/ingest";
+import { contractFromDataset, type IngestedDataset } from "@/lib/engine/ingest";
 
 export const DEMO_PIPELINE_ID = "pl_orders_bronze_gold";
 
+<<<<<<< HEAD
 export type GraphNodeStatus = "pending" | "running" | "success" | "failed";
 export interface PipelineExecutionProgress {
   runId: string;
   nodeStatuses: Record<string, GraphNodeStatus>;
 }
 
+=======
+export interface QuarantinedRecord {
+  id: string;
+  incidentId: string;
+  record: RawRecord;
+  reason: string;
+  status: "quarantined" | "replayed" | "failed";
+  quarantinedAt: string;
+  replayedAt?: string;
+}
+>>>>>>> origin/main
 interface PlatformState {
   sources: DataSource[];
   pipelines: Pipeline[];
@@ -36,6 +48,7 @@ interface PlatformState {
   /** Live and final node state for the existing React Flow pipeline graph. */
   executionProgress: Record<string, PipelineExecutionProgress>;
   incidents: Incident[];
+  quarantine: QuarantinedRecord[];
 
   /** Uploaded CSV datasets, raw rows included. */
   uploads: IngestedDataset[];
@@ -56,7 +69,13 @@ interface PlatformState {
   setActivePipeline: (id: string | null) => void;
   /** Rows a pipeline should process: the active uploaded CSV only. */
   getActiveRows: () => RawRecord[];
+<<<<<<< HEAD
   executePipeline: (pipelineId: string) => Promise<ExecutionResult>;
+=======
+  /** Contract for the active data: the uploaded dataset's own schema, else orders.raw. */
+  getActiveContract: () => DataContract;
+  executePipeline: (pipelineId: string) => ExecutionResult;
+>>>>>>> origin/main
   runDemoIncident: () => Incident;
   applyCopilotFix: (incidentId: string) => void;
   replayFailedRecords: (incidentId: string) => { recovered: number; stillFailing: number };
@@ -126,6 +145,7 @@ export const usePlatform = create<PlatformState>((set, get) => ({
   executions: [],
   executionProgress: {},
   incidents: [],
+  quarantine: [],
   uploads: [],
   activeUploadId: null,
   activePipelineId: null,
@@ -205,6 +225,7 @@ export const usePlatform = create<PlatformState>((set, get) => ({
     return active && !st.driftActive ? active.rawRows : [];
   },
 
+<<<<<<< HEAD
   executePipeline: async (pipelineId) => {
     const state = get();
     const pipeline = state.pipelines.find((p) => p.id === pipelineId);
@@ -217,6 +238,16 @@ export const usePlatform = create<PlatformState>((set, get) => ({
     const appendLog = (level: LogLine["level"], message: string, node?: string) => set((st) => ({
       logs: [{ id: `${runId}_live_${st.logs.length}`, runId, pipelineId, ts: new Date().toISOString(), level, message, node }, ...st.logs],
     }));
+=======
+  getActiveContract: () => {
+    const st = get();
+    const active = st.uploads.find((u) => u.id === st.activeUploadId);
+    return active && !st.driftActive ? contractFromDataset(active) : ordersContract;
+  },
+
+  executePipeline: (pipelineId) => {
+    const res = executeBatch({ pipelineId, records: get().getActiveRows(), contract: get().getActiveContract() });
+>>>>>>> origin/main
     set((st) => ({
       runs: [runningRun(pipelineId, runId, startedAt), ...st.runs],
       activePipelineId: pipelineId,
@@ -360,7 +391,7 @@ export const usePlatform = create<PlatformState>((set, get) => ({
     const res = executeBatch({
       pipelineId: incident.pipelineId,
       records: incident.fixApplied ? st.batch : applyRenameFix(st.batch),
-      contract: ordersContract,
+      contract: st.getActiveContract(),
       runId: `replay_${incident.runId}`,
     });
     const recovered = res.validation.passed;

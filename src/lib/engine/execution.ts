@@ -160,7 +160,7 @@ export async function executeConfiguredPipeline(opts: {
 
 const STAGES = [
   { id: "extract", label: "Extract — OrdersDB" },
-  { id: "contract", label: "Contract validation — orders.raw v2.1.0" },
+  { id: "contract", label: "Contract validation" },
   { id: "transform", label: "Transform — normalize + enrich" },
   { id: "quality", label: "Quality gate — 6 rules" },
   { id: "load", label: "Load — gold.orders_enriched" },
@@ -207,7 +207,7 @@ export function executeBatch(opts: {
   offset += 910;
   stages.push({
     id: "contract",
-    label: STAGES[1].label,
+    label: `${STAGES[1].label} — ${contract.name} v${contract.version}`,
     status: contractFailed ? "failed" : "success",
     rowsIn: records.length,
     rowsOut: validation.passed,

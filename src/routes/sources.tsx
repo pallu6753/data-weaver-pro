@@ -1,14 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
-  Plus, Database, HardDrive, Cloud, Waves, Code2, FileText, Server,
+  Plus, Database, HardDrive, Cloud, Waves, Code2, FileText, Server, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { CsvUploadCard } from "@/components/csv-upload-card";
+<<<<<<< HEAD
 import { PipelineFlowGraph } from "@/components/pipeline-flow-graph";
+=======
+import { DataInsightCard } from "@/components/data-insight-card";
+>>>>>>> origin/main
 import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,6 +62,61 @@ function KindIcon({ kind }: { kind: ConnectorKind }) {
     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[image:var(--gradient-brand)]">
       <Icon className="h-5 w-5 text-white" />
     </div>
+  );
+}
+
+const COMPACT_COUNT = 6;
+
+function ConnectorCarousel() {
+  const [expanded, setExpanded] = useState(false);
+  const scroller = useRef<HTMLDivElement>(null);
+  const visible = expanded ? CONNECTORS : CONNECTORS.slice(0, COMPACT_COUNT);
+
+  const scrollBy = (dir: -1 | 1) => {
+    scroller.current?.scrollBy({ left: dir * 320, behavior: "smooth" });
+  };
+
+  return (
+    <Card className="glass border-border/60">
+      <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-3">
+        <CardTitle className="text-base">Available connectors</CardTitle>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => scrollBy(-1)} aria-label="Scroll connectors left">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => scrollBy(1)} aria-label="Scroll connectors right">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? "Show less ←" : "View more →"}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div
+          ref={scroller}
+          className="flex w-full snap-x gap-2 overflow-x-auto pb-2 [scrollbar-width:thin]"
+        >
+          {visible.map((c, i) => {
+            const Icon = c.icon;
+            const isNew = expanded && i >= COMPACT_COUNT;
+            return (
+              <div
+                key={c.id}
+                style={isNew ? { animationDelay: `${Math.min(i - COMPACT_COUNT, 12) * 35}ms` } : undefined}
+                className={`flex shrink-0 snap-start items-center gap-2 rounded-lg border border-border/40 bg-background/40 px-3 py-2 text-xs transition hover:border-primary/50 ${
+                  isNew ? "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-left-4" : ""
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5 text-primary" />
+                <span className="whitespace-nowrap">{c.label}</span>
+                <span className="whitespace-nowrap text-[10px] uppercase tracking-wider text-muted-foreground">{c.group}</span>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -133,6 +192,7 @@ function SourcesPage() {
 
       <CsvUploadCard />
 
+<<<<<<< HEAD
       <Card className="glass border-border/60">
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -152,6 +212,9 @@ function SourcesPage() {
             : <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-border/60 bg-background/30 text-sm text-muted-foreground">No active pipeline selected</div>}
         </CardContent>
       </Card>
+=======
+      <DataInsightCard />
+>>>>>>> origin/main
 
 
 
@@ -183,26 +246,7 @@ function SourcesPage() {
         ))}
       </div>
 
-      <Card className="glass border-border/60">
-        <CardHeader><CardTitle className="text-base">Available connectors</CardTitle></CardHeader>
-        <CardContent>
-          {groups.map((g) => (
-            <div key={g} className="mb-4 last:mb-0">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{g}</div>
-              <div className="flex flex-wrap gap-2">
-                {CONNECTORS.filter((c) => c.group === g).map((c) => {
-                  const Icon = c.icon;
-                  return (
-                    <div key={c.id} className="flex items-center gap-2 rounded-lg border border-border/40 bg-background/40 px-3 py-1.5 text-xs">
-                      <Icon className="h-3.5 w-3.5 text-primary" />{c.label}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <ConnectorCarousel />
     </div>
   );
 }

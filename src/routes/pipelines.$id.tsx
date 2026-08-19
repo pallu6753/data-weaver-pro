@@ -32,17 +32,81 @@ const iconFor = (type: string) => {
 
 function PipelineDetail() {
   const { id } = Route.useParams();
+  // Selectors must return stable references: `s.runs.filter(...)` builds a new
+  // array on every store read, which makes useSyncExternalStore re-render
+  // forever ("Maximum update depth exceeded") and trips the error boundary.
   const pipeline = usePlatform((s) => s.pipelines.find((p) => p.id === id));
+<<<<<<< HEAD
   const runs = usePlatform((s) => s.runs.filter((r) => r.pipelineId === id));
   const logs = usePlatform((s) => s.logs.filter((l) => l.pipelineId === id));
   const progress = usePlatform((s) => s.executionProgress[id]);
+=======
+  const allRuns = usePlatform((s) => s.runs);
+  const allLogs = usePlatform((s) => s.logs);
+>>>>>>> origin/main
   const triggerRun = usePlatform((s) => s.triggerRun);
   const updatePipeline = usePlatform((s) => s.updatePipeline);
+  const hydrated = useHydrated();
 
-  if (!pipeline) throw notFound();
+  const runs = useMemo(() => allRuns.filter((r) => r.pipelineId === id), [allRuns, id]);
+  const logs = useMemo(() => allLogs.filter((l) => l.pipelineId === id), [allLogs, id]);
 
   const [selected, setSelected] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
 
+<<<<<<< HEAD
+=======
+  const nodes: Node[] = useMemo(() => (pipeline?.nodes ?? []).map((n) => ({
+    id: n.id, position: n.position, data: { label: n.label, type: n.type }, type: "nexus",
+  })), [pipeline]);
+  const edges: Edge[] = useMemo(() => (pipeline?.edges ?? []).map((e) => ({
+    id: e.id, source: e.source, target: e.target, animated: pipeline?.status === "running",
+    style: { stroke: "oklch(0.68 0.20 265)", strokeWidth: 2 },
+  })), [pipeline]);
+
+  if (!pipeline) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-4 p-8">
+        <Button variant="ghost" size="sm" asChild className="-ml-2">
+          <Link to="/pipelines"><ArrowLeft className="h-4 w-4" /> All pipelines</Link>
+        </Button>
+        <Card className="glass border-border/60">
+          <CardHeader><CardTitle className="text-base">Pipeline not found</CardTitle></CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <p>No pipeline exists with id <span className="font-mono text-foreground">{id}</span>.</p>
+            <p>It may have been created in a previous session — pipelines live in the in-memory platform store and reset on reload.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const runNow = async () => {
+    setRunning(true);
+    try {
+      const res = executePipeline(pipeline.id);
+      const label = `${res.rowsLoaded.toLocaleString()} rows loaded · quality ${res.qualityScore}%`;
+      if (res.status === "failed") {
+        toast.error(`Run failed — ${res.error ?? "no rows passed contract validation"}`, {
+          description: `${res.validation.failed.toLocaleString()} of ${res.rowsRead.toLocaleString()} records rejected. See the Logs tab for per-stage detail.`,
+        });
+      } else if (res.status === "partial") {
+        toast.warning(`Run completed with rejects — ${label}`, {
+          description: `${res.validation.failed.toLocaleString()} records quarantined.`,
+        });
+      } else {
+        toast.success(`Run succeeded — ${label}`);
+      }
+    } catch (err) {
+      toast.error("Could not start the run", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setRunning(false);
+    }
+  };
+
+>>>>>>> origin/main
   return (
     <div className="mx-auto max-w-[1600px] space-y-6 p-6 lg:p-8">
       <Button variant="ghost" size="sm" asChild className="-ml-2">

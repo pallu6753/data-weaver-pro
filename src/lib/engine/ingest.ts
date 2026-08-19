@@ -3,7 +3,7 @@
 // data used by preview, pipeline execution and the quality engine.
 
 import Papa from "papaparse";
-import type { RawRecord } from "./contracts";
+import type { DataContract, RawRecord } from "./contracts";
 
 export type InferredType = "string" | "integer" | "decimal" | "boolean" | "date" | "datetime";
 
@@ -146,4 +146,32 @@ export function assertCsvFile(file: File) {
   if (!ok) throw new IngestError(`Unsupported file type "${file.name}". Upload a .csv file.`);
   if (file.size === 0) throw new IngestError("The selected file is empty.");
   if (file.size > 25 * 1024 * 1024) throw new IngestError("File too large — the demo accepts CSV files up to 25 MB.");
+}
+
+/**
+ * Builds a data contract from an uploaded dataset's inferred schema, so custom
+ * CSVs are validated against their own shape instead of the Orders contract.
+ * Validation is real: types must hold and columns that were fully populated at
+ * ingest time are required.
+ */
+export function contractFromDataset(ds: IngestedDataset): DataContract {
+  return {
+    id: `dc_${ds.id}`,
+    name: ds.name,
+    version: "1.0.0",
+    owner: "you",
+    dataset: `bronze.${ds.name}`,
+    fields: ds.columns.map((c) => ({
+      name: c.name,
+      type:
+        c.type === "integer" || c.type === "decimal"
+          ? ("number" as const)
+          : c.type === "date" || c.type === "datetime"
+            ? ("timestamp" as const)
+            : ("string" as const),
+      required: !c.nullable,
+      pii: /email|phone|ssn|address|name/i.test(c.name),
+      description: `Inferred ${c.type} from ${ds.fileName} · ${c.distinct.toLocaleString()} distinct, ${c.nullPct}% null`,
+    })),
+  };
 }
